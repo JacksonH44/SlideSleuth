@@ -1,9 +1,9 @@
 #!/bin/bash
 #SBATCH --account=def-sushant
-#SBATCH -t 0-00:30
-#SBATCH --mem=4G
-#SBATCH --cpus-per-task=4
-#SBATCH --job-name=test_deepzoom
+#SBATCH --gres=gpu:1
+#SBATCH --cpus-per-task=6
+#SBATCH --mem=3000M
+#SBATCH --time=0-00:20
 #SBATCH --output=../outputs/SLURM_DEFAULT_OUT/test_deepzoom_%j.out
 #SBATCH --error=../outputs/SLURM_DEFAULT_OUT/test_deepzoom_%j.err
 
@@ -18,6 +18,6 @@ pip install --no-index openslide-python
 curDate=$(date '+%Y-%m-%d')
 directory="/scratch/jhowe4/results/$curDate/3"
 mkdir -p "$directory"
-python ../src/deepzoom_tile.py -s 229 -e 0 -j 32 -B 50 --output="$directory" ../inputs/HNE/001.svs
+python ../src/deepzoom_tile.py -s 229 -e 0 -j 32 -B 50 --output="$directory" ../inputs/HNE/003.svs
 deactivate
 rm -rf $ENVDIR

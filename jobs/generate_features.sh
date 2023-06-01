@@ -2,10 +2,10 @@
 #SBATCH --account=def-sushant
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=6
-#SBATCH --mem=3000M
+#SBATCH --mem=12000M
 #SBATCH --time=0-00:30
-#SBATCH --output=../outputs/SLURM_DEFAULT_OUT/transfer_learning-%j.out
-#SBATCH --error=../outputs/SLURM_DEFAULT_OUT/transfer_learning-%j.err
+#SBATCH --output=../outputs/SLURM_DEFAULT_OUT/generate_features-%j.out
+#SBATCH --error=../outputs/SLURM_DEFAULT_OUT/generate_features-%j.err
 
 module load python
 ENVDIR=/tmp/$RANDOM
@@ -17,6 +17,6 @@ module load openslide
 source $ENVDIR/bin/activate
 pip install --no-index tensorflow
 pip install --no-index openslide-python
-python ../src/transfer_learning.py /scratch/jhowe4/results/2023-06-01/001_files/5.0/10_20.jpeg features.csv
+python ../src/generate_features.py /scratch/jhowe4/results/2023-06-01/3 ../outputs/tmp_out
 deactivate
 rm -rf $ENVDIR

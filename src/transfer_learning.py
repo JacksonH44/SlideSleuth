@@ -52,7 +52,7 @@ def extract_features(model, img_path, output_path):
   # Current length is 2048
   features = model.predict(x)
 
-  # Write vector to the csvfile specified by data_path
+  # Write vector to the csvfile specified by output_path
   if exists(output_path):
     mode = 'a'
   else:
