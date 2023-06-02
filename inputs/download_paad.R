@@ -4,11 +4,13 @@ BiocManager::install("TCGAbiolinks")
 library(TCGAbiolinks)
 
 query <- GDCquery(
-  project = "TCGA-LUAD", 
+  project = "TCGA-PAAD", 
   data.category = "Biospecimen",
-  data.type = "Slide Image"
+  data.type = "Slide Image",
+  experimental.strategy = "Tissue Slide"
 )
 
 print("Downloading...")
-# Download a list of barcodes with platform IlluminaHiSeq_RNASeqV2
+
+# Download whole slide images from TCGA for Pancreatic adenocarcinoma
 GDCdownload(query, method="api")
