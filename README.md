@@ -8,10 +8,10 @@ The tool includes a pipeline that will tile each WSI in the dataset folder, then
 Currently, the tool is still in active development. As of right now, only the data pipeline has been built. The development languages are Python and R. Pipelining and Development are done with the help of Tensorflow, Openslide, and the R package Bioconductor. Containerization is done with Apptainer (formerly Singularity).
 
 ## Table of Contents
-[Installation Instructions](#install)
-[Use Instructions](#use)
-[Credits](#credits)
-[Extra Points](#extra)
+* [Installation Instructions](#install)
+* [Use Instructions](#use)
+* [Credits](#credits)
+* [Extra Points](#extra)
 
 ## Installation Instructons <a name="install"></a>
 
