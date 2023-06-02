@@ -69,7 +69,6 @@ class TileWorker(Process):
             if data is None:
                 self._queue.task_done()
                 break
-            #associated, level, address, outfile = data
             associated, level, address, outfile, format, outfile_bw, PercentMasked = data
             if last_associated != associated:
                 dz = self._get_dz(associated)
@@ -91,10 +90,6 @@ class TileWorker(Process):
                         if PercentMasked >= (self._ROIpc / 100.0):
                             #if PercentMasked > 0.05:
                             tile.save(outfile, quality=self._quality)
-                    #print("%s good: %f" %(outfile, avgBkg))
-                    #elif level>5:
-                    #    tile.save(outfile, quality=self._quality)
-                    #print("%s empty: %f" %(outfile, avgBkg))
                     self._queue.task_done()
                 except:
                     print(level, address)
@@ -132,7 +127,6 @@ class DeepZoomImageTiler(object):
     def _write_tiles(self):
         ########################################3
         # nc_added
-        #level = self._dz.level_count-1
         Magnification = 20  # the magnification to start with
         tol = 2
         #get slide dimensions, zoom levels, and objective information
@@ -159,7 +153,6 @@ class DeepZoomImageTiler(object):
             Level = int(max([i for (i, val) in enumerate(AbsMismatch)]))
             Factor = Magnification / Available[Level]
         # end added
-        #for level in range(self._dz.level_count):
         xml_valid = False
         # a dir was provided for xml files
         ImgID = os.path.basename(self._basename)
@@ -185,8 +178,6 @@ class DeepZoomImageTiler(object):
             if (ThisMag != 5.0):
                 continue
 
-            ########################################
-            #tiledir = os.path.join("%s_files" % self._basename, str(level))
             tiledir = os.path.join("%s_files" % self._basename, str(ThisMag))
             if not os.path.exists(tiledir):
                 os.makedirs(tiledir)
@@ -194,14 +185,12 @@ class DeepZoomImageTiler(object):
             if xml_valid:
                 # If xml file is used, check for each tile what are their corresponding coordinate in the base image
                 IndX_orig, IndY_orig = self._dz.level_tiles[-1]
-                #CurrentLevel_ReductionFactor = round(float(self._dz.level_dimensions[-1][0]) / float(self._dz.level_dimensions[level][0]))
                 CurrentLevel_ReductionFactor = round(
                     Img_Fact * float(self._dz.level_dimensions[-1][0]) / float(self._dz.level_dimensions[level][0]))
                 print(CurrentLevel_ReductionFactor, Img_Fact, float(mask.shape[1]), float(
                     self._dz.level_dimensions[-1][0]), float(self._dz.level_dimensions[level][0]))
                 startIndX_current_level_conv = [
                     int(i * CurrentLevel_ReductionFactor) for i in range(cols)]
-                #endIndX_current_level_conv = [i * CurrentLevel_ReductionFactor - 1 for i in range(cols)]
                 endIndX_current_level_conv = [
                     int(i * CurrentLevel_ReductionFactor) for i in range(cols)]
                 endIndX_current_level_conv.append(IndX_orig)
@@ -209,7 +198,6 @@ class DeepZoomImageTiler(object):
 
                 startIndY_current_level_conv = [
                     int(i * CurrentLevel_ReductionFactor) for i in range(rows)]
-                #endIndX_current_level_conv = [i * CurrentLevel_ReductionFactor - 1 for i in range(rows)]
                 endIndY_current_level_conv = [
                     int(i * CurrentLevel_ReductionFactor) for i in range(rows)]
                 endIndY_current_level_conv.append(IndY_orig)
@@ -280,7 +268,6 @@ class DeepZoomImageTiler(object):
         # Number of centers at the highest resolution
         cols, rows = self._dz.level_tiles[-1]
         Img_Fact = int(ImgMaxSizeX_orig / 5.0 / cols)
-        #print(ImgMaxSizeX_orig, ImgMaxSizeY_orig, cols, rows)
         try:
             xmlcontent = minidom.parse(xmldir)
             xml_valid = True
@@ -377,10 +364,7 @@ class DeepZoomStaticTiler(object):
     def _write_static(self):
         basesrc = os.path.join(os.path.dirname(
             os.path.abspath(__file__)), 'static')
-        #print(basesrc)
         basedst = os.path.join(self._basename, 'static')
-        #print(self._basename)
-        #;print(basedst)
         self._copydir(basesrc, basedst)
         self._copydir(os.path.join(basesrc, 'images'),
                       os.path.join(basedst, 'images'))
@@ -445,11 +429,7 @@ if __name__ == '__main__':
                       default=1, help='if xml file is used, keep tile within the ROI (1) or outside of it (0)')
     parser.add_option('-R', '--ROIpc', metavar='PIXELS', dest='ROIpc', type='float', default=50,
                       help='To be used with xml file - minimum percentage of tile covered by ROI')
-    '''
-    ####################
-    python deepzoom_tile.py  -s 224 -e 0 -j 32 -B 25  --output="/ysm-gpfs/pi/gerstein/aj557/data_deeppath/data_slides_resnet/tiles/tile_out1" /ysm-gpfs/pi/gerstein/aj557/data_deeppath/data_slides_resnet/images/558ed5af-8ff7-4a00-8147-a354608ea8e9/TCGA-AO-A124-01A-01-BSA.0770840e-d781-45f2-bbc8-034f0e4138a5.svs
-    ####################
-    '''
+    
     (opts, args) = parser.parse_args()
     try:
         slidepath = args[0]
@@ -459,11 +439,6 @@ if __name__ == '__main__':
     if opts.xmlfile is None:
         opts.xmlfile = ''
 
-    #(slidepath) returns a list of pathnames with that contain slidepath ( string containing path specifications)
-    #print(opts.basename)
-    #print(args)
-    #print(args[0])
-    #print(slidepath)
     files = glob(slidepath)
     print(files)
     print("***********************")
@@ -482,20 +457,12 @@ if __name__ == '__main__':
         '''
     for imgNb in range(len(files)):
         filename = files[imgNb]
-        #print(filename)
         opts.basenameJPG = os.path.splitext(os.path.basename(filename))[0]
         print("processing: " + opts.basenameJPG)
         # appends the image file name to the output folder path
         output = os.path.join(opts.basename, opts.basenameJPG)
 
-        # dz_queue.put(DeepZoomStaticTiler(filename, output, opts.format, opts.tile_size, opts.overlap, opts.limit_bounds, opts.quality, opts.workers, opts.with_viewer, opts.Bkg, opts.basenameJPG).run())
-	# REMEMBER TO HANDLE ERRORS HERE IN CASE OF FAULTY IMAGE DOWNLOADS
         DeepZoomStaticTiler(filename, output, opts.format, opts.tile_size, opts.overlap, opts.limit_bounds, opts.quality,
                             opts.workers, opts.with_viewer, opts.Bkg, opts.basenameJPG, opts.xmlfile, opts.mask_type, opts.ROIpc).run()
-    '''
-        dz_queue.join()
-        for i in range(opts.max_number_processes):
-        dz_queue.put( None )
-        '''
 
     print("End")
