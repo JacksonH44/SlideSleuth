@@ -1,22 +1,25 @@
 '''
   A program that calls deepzoom_tile.py on each image in a data set.
 
-  Usage: python tile_folder.py /path/to/source /path/to/destination
-  Example: python tile_folder.py ~/projects/def-sushant/jhowe4/DeepTumour/inputs/HNE
+  Usage: python tile_folder.py opts /path/to/source
+  Example: python tile_folder.py -s 229 -e 0 -j 32 -B 50 --output=/path/to/output ~/projects/def-sushant/jhowe4/DeepTumour/inputs/HNE
 
   Author: Jackson Howe
   Last Updated: June 1, 2023
 '''
 
-from optparse import OptionParse
-import sys
+from optparse import OptionParser
+from glob import glob
+from os.path import basename, splitext, join
+from os import listdir
+import deepzoom_tile
 
 '''
   A function that tiles all the whole slide images (WSIs) in a folder
 '''
 
 if __name__ == '__main__':
-  # parser is to read command line arguments and also ssetup arguments or options for a command line script
+  # Build parse to read options and also take in any command line arguments
   parser = OptionParser(usage='Usage: %prog [options] <slide>')
 
   parser.add_option('-L', '--ignore-bounds', dest='limit_bounds',
@@ -44,18 +47,40 @@ if __name__ == '__main__':
   parser.add_option('-R', '--ROIpc', metavar='PIXELS', dest='ROIpc', type='float', default=50,
                       help='To be used with xml file - minimum percentage of tile covered by ROI')
 
-  # Verify source directory
+  # Get the path to the slides directory
+  (opts, args) = parser.parse_args()
   try:
-    src_dir = sys.argv[1]
-    if not (exists(src_dir) and isdir(src_dir)):
-      raise FileNotFoundError
+    slidepath = args[0]
   except IndexError:
-    print("Missing source directory")
-  except FileNotFoundError:
-    print(f"The directory {src_dir} doesn't exist")
+    parser.error('Missing slide argument')
 
-  # Verify destination directory
-  try:
-    dest_dir = sys.argv[2]
-  except IndexError:
-    print("Missing destination directory")
+  # Fill in rest of required file data
+  if opts.xmlfile is None:
+    opts.xmlfile = ''
+
+  for file in listdir(slidepath):
+    if (file[0] != "."):
+      files = glob(slidepath)
+      for imgNb in range(len(files)):
+        filename = f"{files[imgNb]}/{file}"
+        opts.basenameJPG = splitext(basename(filename))[0]
+        print("processing: " + opts.basenameJPG)
+
+        # appends the image file name to the output folder path
+        output = join(opts.basename, opts.basenameJPG)
+        print(f"Processing {filename} that is going to {output}")
+
+        deepzoom_tile.DeepZoomStaticTiler(filename, 
+                        output, 
+                        opts.format, 
+                        opts.tile_size, 
+                        opts.overlap, 
+                        opts.limit_bounds, 
+                        opts.quality,
+                        opts.workers, 
+                        opts.with_viewer, 
+                        opts.Bkg, 
+                        opts.basenameJPG, 
+                        opts.xmlfile, 
+                        opts.mask_type, 
+                        opts.ROIpc).run()
