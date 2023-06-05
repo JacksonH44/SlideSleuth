@@ -1,2 +1,9 @@
 inputs/HNE
 src/__pycache__
+inputs/Aggregated CK7 rescoring.xlsx
+inputs/CK7 study_database_rescoring_final_EY.xlsx
+inputs/CK7 study_database_rescoring_final_MRCv2.xlsx
+inputs/CK7 study_database_rescoring_final-Najd.xlsx
+inputs/CK7 study_database_rescoring_final_TSAOv2.xlsx
+inputs/Combined CK7 rescoring.xlsx
+outputs/SLURM_DEFAULT_OUT
