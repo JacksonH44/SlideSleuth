@@ -158,11 +158,13 @@ najdData <- read_excel("../inputs/CK7 study_database_rescoring_final-Najd.xlsx",
 # 2: used as a negative case
 ind <- integer(108)
 
-# Set the current case number to 1, current row number to 1, and if we're inside of a 
-# continued case to False
+# Set the current case number to 1, current row number to 1, if we're inside of a 
+# continued case to False, and the current vector of results, each entry in the 
+# vector representing a result of a subcase
 case <- 1
 row <- 1
 continuedCase <- FALSE
+resVec <- c()
 
 while (row <= nrows(tsaoData)) {
   # Dr. Tsao's file wrote that case 46 had faint staining and didn't score it, so we 
@@ -182,6 +184,7 @@ while (row <= nrows(tsaoData)) {
       } else {
         # We're in a different case, one with multiple parts
         continuedCase <- FALSE
+        case <- case + 1
       }
     } else {
       # We are in a single slide case, thus a new case
@@ -215,12 +218,50 @@ while (row <= nrows(tsaoData)) {
     )
     df[is.na(df)] <- 0
 
-    # compute icc and filter based off it
+    # compute icc and filter based off newly created data frame
     filterRes <- filterRow(df[,2:5])
 
+    # If we're in a continued case, we should check if we're at the end. If we are, we
+    # can base our conclusion off a previously stored vector
+    if !(continuedCase) {
+      # When we hit a new case, we update the value of the indicator vector in the 
+      # previous case. All values in resVec (however long it is) must be true for the
+      # case to be used as a gold standard for the dataset
+      flag <- FALSE
+      for (i in 1:length(resVec)) {
+        # If we find a false element, then we can't use that case, and assign it a 0
+        if !(resVec[i]) {
+          ind[case - 1] <- 0
+        }
+      }
 
+      # if we didn't find a false element, we can use this case as a gold standard case
+      if (!flag) {
+        ind[case - 1] <- 1
+      }
+
+      # Now that we have updated the previous result, reset the result vector to nothing
+      resVec <- c()
+    }
+
+    # Add filter result to the results vector
+    resVec <- cbind(resVec, c(filterRes))
   }
 
   # Update loop variable
   row <- row + 1
+}
+
+# Update the indication for the last loop
+flag <- FALSE
+for (i in 1:length(resVec)) {
+  # If we find a false element, then we can't use that case, and assign it a 0
+  if !(resVec[i]) {
+    ind[case] <- 0
+  }
+}
+
+# if we didn't find a false element, we can use this case as a gold standard case
+if (!flag) {
+  ind[case] <- 1
 }
