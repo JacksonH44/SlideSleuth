@@ -6,7 +6,10 @@
     2.To save memory and space tile only for particular magnifications. 
     3. Make sure to keep track of file number.
     4.2000-4000 tiles generated per image
-    
+
+    Date Created: 2019
+    Last Updated: June 2, 2023
+    Author: Akshina
 '''
 
 # The path can also be read from a config file, etc.

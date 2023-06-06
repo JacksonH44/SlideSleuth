@@ -2,7 +2,7 @@
   A function that generates feature vectors for all image tiles corresponding to each image in a dataset.
 
   Usage: python generate_features.py /path/to/root/of/all/image/tiles /path/to/desired/output/file
-  Example: python generate_features.py /scratch/jhowe4/results/2023-06-01/3 ../outputs/tmp_out
+  Example: python generate_features.py /scratch/jhowe4/outputs/pipeline_test/2023-06-05/1 ../outputs/tmp_out
 
   The program deepzoom_tile.py writes its tiled slide image path in the following way:
 
@@ -27,7 +27,8 @@
   So this program assumes such an output folder when searching for tiled images.
 
   Author: Jackson Howe
-  Last Updated: June 1, 2023
+  Date Created: June 1, 2023
+  Last Updated: June 2, 2023
 '''
 
 # imports

@@ -1,7 +1,7 @@
 # TissueTango
 
 ## Description
-TissueTango is a tool to analyze large whole slide image (WSI) datasets of lung adenocarcinoma (LUAD) via feature extraction and unsupervised learning. Specifically, DeepTumour uses each feature vector as an input to a variational autoencoder (VAE), then clusters made by the VAE are analyzed. Within the clusters, we aim to identify biomarkers/cancer drivers for LUAD. 
+TissueTango is a tool to analyze large whole slide image (WSI) datasets of lung adenocarcinoma (LUAD) via feature extraction and unsupervised learning. Specifically, TissueTango uses each feature vector as an input to a variational autoencoder (VAE), then clusters made by the VAE are analyzed. Within the clusters, we aim to identify biomarkers/cancer drivers for LUAD. 
 
 The tool includes a pipeline that will tile each WSI in the dataset folder, then extract the feature vector for each tile image to a csv file. Once the feature vectors are clustered by the VAE, expert pathologists and scientists examine the clusters for patterns.
 
