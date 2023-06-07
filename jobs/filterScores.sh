@@ -9,3 +9,5 @@
 module load gcc r
 module load r-bundle-bioconductor/3.16
 module load openmpi
+
+Rscript ../src/filterScores.R
