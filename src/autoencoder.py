@@ -1,8 +1,9 @@
 '''
   A program that implements a deep convolutional variational autoencoder
 
-  Author: https://www.youtube.com/watch?v=TtyoFTyJuEY&list=PL-wATfeyAMNpEyENTc-tVH5tfLGKtSWPp&index=4
-  (Youtube tutorial, channel: Valerio Velardo)
+  Author: YouTube Channel - Valerio Velardo
+  link: https://www.youtube.com/watch?v=TtyoFTyJuEY&list=PL-wATfeyAMNpEyENTc-tVH5tfLGKtSWPp&index=4
+  
   Date Created: June 7, 2023
   Last Updated: June 8, 2023
 '''
