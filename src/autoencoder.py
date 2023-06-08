@@ -2,14 +2,15 @@
   A program that implements a deep convolutional variational autoencoder
 
   Author: https://www.youtube.com/watch?v=TtyoFTyJuEY&list=PL-wATfeyAMNpEyENTc-tVH5tfLGKtSWPp&index=4
-  (Youtube tutorial) with adjustments from Jackson Howe
+  (Youtube tutorial, channel: Valerio Velardo)
   Date Created: June 7, 2023
-  Last Updated: June 7, 2023
+  Last Updated: June 8, 2023
 '''
 
 from tensorflow.keras import Model
-from tensorflow.keras.layers import Input, Conv2D, ReLU, BatchNormalization, Flatten, Dense
+from tensorflow.keras.layers import Input, Conv2D, ReLU, BatchNormalization, Flatten, Dense, Reshape, Conv2DTranspose, Activation
 from tensorflow.keras import backend as K
+import numpy as np
 
 class Autoencoder:
   '''
@@ -37,13 +38,98 @@ class Autoencoder:
 
   # Public method that prints information about the architecture of the model to the console
   def summary(self):
-    self.encoder.summary();
+    self.encoder.summary()
+    self.decoder.summary()
 
   # Three-step model building 
   def _build(self):
     self._build_encoder()
-    # self._build_decoder()
+    self._build_decoder()
     # self._build_autoencoder()
+
+  # A function that calls the building blocks of building the decoder
+  def _build_decoder(self):
+    # Input layer
+    decoder_input = self._add_decoder_input()
+
+    # Add dense layer with flattened shape before bottleneck
+    dense_layer = self._add_dense_layer(decoder_input)
+
+    # Reshape model to get encoder shape before bottleneck
+    reshape_layer = self._add_reshape_layer(dense_layer)
+
+    # Add all the conv transpose blocks in the reverse order of the encoder
+    conv_transpose_layers = self._add_conv_transpose_layers(reshape_layer)
+
+    # Add the last conv transpose layer and the output activation layer
+    decoder_output = self._add_decoder_output(conv_transpose_layers)
+
+    self.decoder = Model(decoder_input, decoder_output, name="decoder")
+
+  # Return the input layer with the latent space dimension
+  def _add_decoder_input(self):
+    return Input(shape=self.latent_space_dim, name="decoder_input")
+  
+  def _add_dense_layer(self, decoder_input):
+    # 3D array [width, height, num_channels] -> 1D array
+    num_neurons = np.prod(self._shape_before_bottleneck)
+    dense_layer = Dense(num_neurons, name="decoder_dense")(decoder_input)
+    return dense_layer
+  
+  def _add_reshape_layer(self, dense_layer):
+    return Reshape(self._shape_before_bottleneck)(dense_layer)
+    
+  # Adds convolutional transpose blocks
+  # 
+  # arch is the graph of nodes representing the built neural network so far
+  def _add_conv_transpose_layers(self, arch):
+    # loop through all the conv layers in reverse order and stop at the first layer
+    for layer_idx in reversed(range(1, self._num_conv_layers)):
+      # [layer_A, layer_B, layer_C] -> [layer_C, layer_B]
+      arch = self._add_conv_transpose_layer(arch, layer_idx)
+    return arch
+  
+  # Add one conv transpose block to the graph
+  #
+  # One conv transpose block consists of conv transpose, relu layer, and batch norm layer
+  def _add_conv_transpose_layer(self, arch, layer_idx):
+    # The conv transpose layer number for the decoder is the reverse of the encoder
+    layer_num = self._num_conv_layers - layer_idx
+
+    # Add conv transpose layer
+    conv_transpose_layer = Conv2DTranspose(
+      filters=self.conv_filters[layer_idx],
+      kernel_size=self.conv_kernels[layer_idx],
+      strides=self.conv_strides[layer_idx],
+      padding="same",
+      name=f"decoder_conv_transpose_layer_{layer_num}"
+    )
+    arch = conv_transpose_layer(arch)
+
+    # Add ReLU layer
+    arch = ReLU(name=f"decoder_relu_{layer_num}")(arch)
+
+    # Add Batch Normalization layer
+    arch = BatchNormalization(name=f"decoder_bn_{layer_num}")(arch)
+                                                              
+    return arch
+
+  def _add_decoder_output(self, arch):
+    # Add last conv transpose layer
+    conv_transpose_layer = Conv2DTranspose(
+        # [width, height, num_channels] coincide with encoder input
+        filters=1, 
+        kernel_size=self.conv_kernels[0],
+        strides=self.conv_strides[0],
+        padding="same",
+        name=f"decoder_conv_transpose_layer_{self._num_conv_layers}"
+    )
+    arch = conv_transpose_layer(arch)
+
+    # Add last activation layer
+    output_layer = Activation("sigmoid", name="sigmoid_layer")
+    arch = output_layer(arch)
+    return arch
 
   # A function that calls the building blocks of creating the encoder
   def _build_encoder(self):
