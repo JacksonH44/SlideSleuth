@@ -10,6 +10,8 @@
 from tensorflow.keras import Model
 from tensorflow.keras.layers import Input, Conv2D, ReLU, BatchNormalization, Flatten, Dense, Reshape, Conv2DTranspose, Activation
 from tensorflow.keras import backend as K
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.losses import BinaryCrossentropy
 import numpy as np
 
 class Autoencoder:
@@ -17,7 +19,9 @@ class Autoencoder:
     Autoencoder represents a Deep Convolutional autoencoder architecture
   '''
 
-  # Constructor
+  '''
+    Constructor
+  '''
   def __init__(self, input_shape, conv_filters, conv_kernels, conv_strides, latent_space_dim):
     self.input_shape = input_shape # [width, height, num_channels]
     self.conv_filters = conv_filters # [first, second, ..., last]
@@ -32,22 +36,57 @@ class Autoencoder:
     # Private variables
     self._num_conv_layers = len(conv_filters)
     self._shape_before_bottleneck = None
+    self._model_input = None
 
     # Build model
     self._build()
 
-  # Public method that prints information about the architecture of the model to the console
+  '''
+    Public method that prints information about the architecture of the model to the console
+  '''
   def summary(self):
     self.encoder.summary()
     self.decoder.summary()
+    self.model.summary()
 
-  # Three-step model building 
+  '''
+    Compile model before use
+  '''
+  def compile(self, learning_rate=0.0001):
+    optimizer = Adam(learning_rate=learning_rate)
+    loss = BinaryCrossentropy() # coudl also use mse
+    self.model.compile(optimizer=optimizer, loss=loss)
+
+  '''
+    Training the model
+  '''
+  def train(self, x_train, batch_size, num_epochs):
+    # Since an autoencoder wants to minimize reconstruction loss, the desired output (second argument) is the training data itself
+    self.model.fit(x_train,
+                   x_train,
+                   batch_size=batch_size,
+                   epochs=num_epochs,
+                   shuffle=True)
+
+  ''' 
+  Three-step model building 
+  '''
   def _build(self):
     self._build_encoder()
     self._build_decoder()
-    # self._build_autoencoder()
+    self._build_autoencoder()
 
-  # A function that calls the building blocks of building the decoder
+  '''
+    Link together encoder and decoder (encoder is the input to the decoder)
+  '''
+  def _build_autoencoder(self):
+    model_input = self._model_input
+    model_output = self.decoder(self.encoder(model_input))
+    self.model = Model(model_input, model_output, name="autoencoder")
+
+  '''
+    A function that calls the building blocks of building the decoder
+  '''
   def _build_decoder(self):
     # Input layer
     decoder_input = self._add_decoder_input()
@@ -66,7 +105,9 @@ class Autoencoder:
 
     self.decoder = Model(decoder_input, decoder_output, name="decoder")
 
-  # Return the input layer with the latent space dimension
+  '''
+    Return the input layer with the latent space dimension
+  '''
   def _add_decoder_input(self):
     return Input(shape=self.latent_space_dim, name="decoder_input")
   
@@ -78,10 +119,12 @@ class Autoencoder:
   
   def _add_reshape_layer(self, dense_layer):
     return Reshape(self._shape_before_bottleneck)(dense_layer)
-    
-  # Adds convolutional transpose blocks
-  # 
-  # arch is the graph of nodes representing the built neural network so far
+
+  '''
+    Adds convolutional transpose blocks
+
+    arch is the graph of nodes representing the built network so far
+  '''
   def _add_conv_transpose_layers(self, arch):
     # loop through all the conv layers in reverse order and stop at the first layer
     for layer_idx in reversed(range(1, self._num_conv_layers)):
@@ -89,9 +132,11 @@ class Autoencoder:
       arch = self._add_conv_transpose_layer(arch, layer_idx)
     return arch
   
-  # Add one conv transpose block to the graph
-  #
-  # One conv transpose block consists of conv transpose, relu layer, and batch norm layer
+  '''
+    Add one conv transpose block to the graph
+
+    One conv transpose block consists of conv transpose, relu layer, and batch norm layer
+  '''
   def _add_conv_transpose_layer(self, arch, layer_idx):
     # The conv transpose layer number for the decoder is the reverse of the encoder
     layer_num = self._num_conv_layers - layer_idx
@@ -131,10 +176,13 @@ class Autoencoder:
     arch = output_layer(arch)
     return arch
 
-  # A function that calls the building blocks of creating the encoder
+  '''
+    A function that calls the building blocks of creating the encoder
+  '''
   def _build_encoder(self):
     # Create a basic architecture consisting of just the input layer
     encoder_input = self._add_encoder_input() 
+    self._model_input = encoder_input
 
     # Add the specified number of convolutional layers to the existing input layer
     conv_layers = self._add_conv_layers(encoder_input)
@@ -144,11 +192,17 @@ class Autoencoder:
 
     self.encoder = Model(inputs=encoder_input, outputs=bottleneck, name="encoder")
 
-  # Get Input object with the specified input shape
+  '''
+    Get Input object with the specified input shape
+  '''
   def _add_encoder_input(self):
     return Input(shape=self.input_shape, name="encoder_input")
 
-  # Create convolutional "blocks" as specified by input
+  '''
+    Create convolutional blocks as specified by input
+
+    arch is the graph of nodes representing the built network so far
+  '''
   def _add_conv_layers(self, encoder_input):
     arch = encoder_input
 
@@ -157,9 +211,11 @@ class Autoencoder:
       arch = self._add_conv_layer(layer_idx, arch)
     return arch
 
-  # Add a convolutional block to the existing architecture
-  # 
-  # Each block consists of Conv2D, ReLU, and Batch normalization layer
+  '''
+    Add a convolutional block to the existing architecture
+
+    Each block consists of Conv2D, ReLU, and Batch Normalization layer
+  '''
   def _add_conv_layer(self, layer_index, arch):
     layer_num = layer_index + 1
 
@@ -184,7 +240,9 @@ class Autoencoder:
     # Return the architecture with an additional conv block
     return arch
 
-  # Flatten the data and add a bottleneck (dense layer) to the architecture
+  '''
+    Flatten the data and add a bottleneck (dense layer) to the architecture
+  '''
   def _add_bottleneck(self, arch):
     # Store the info about the flattened model for the decoder
     self._shape_before_bottleneck = K.int_shape(arch)[1:] # [batch size, width, height, num_channels]
