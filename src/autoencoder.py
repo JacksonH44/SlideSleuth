@@ -85,6 +85,16 @@ class Autoencoder:
   def load_weights(self, weights_path):
     self.model.load_weights(weights_path)
 
+  '''
+    Reconstruct images using a trained autoencoder
+  '''
+  def reconstruct(self, images):
+    # Pipe the images into the encoder, then pipe the result of the encoder back
+    # into the decoder
+    latent_representations = self.encoder.predict(images)
+    reconstructed_images = self.decoder.predict(latent_representations)
+    return reconstructed_images, latent_representations
+
   @classmethod
   def load(cls, save_folder="."):
     '''

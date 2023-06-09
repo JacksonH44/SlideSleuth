@@ -12,20 +12,6 @@ import pickle
 '''
   A function to load desired data to the model
 '''
-
-# class TrainingData:
-#   """
-#     A class to save training data for the variational autoencoder in case you need to access it from the internet. CC's compute nodes don't have access to the internet, so run this script on a login node, then once you have the data, use the SLURM scheduler
-#   """
-
-#   '''
-#     Constructor
-#   '''
-#   def __init__(self, x_train, y_train, x_test, y_test):
-#     self.x_train = x_train
-#     self.y_train = y_train
-#     self.x_test = x_test
-#     self.y_test = y_test
   
 def load_mnist():
   (x_train, y_train), (x_test, y_test) = mnist.load_data()

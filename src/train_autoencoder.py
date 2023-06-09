@@ -9,7 +9,6 @@
 '''
 
 from autoencoder import Autoencoder
-# from load_autoencoder_data import TrainingData
 import pickle
 
 LEARNING_RATE = 0.0005
@@ -39,10 +38,8 @@ if __name__ == '__main__':
   data = None
   with open(data_path, 'rb') as file:
     data = pickle.load(file)
-  autoencoder = train((data[0])[:500], LEARNING_RATE, BATCH_SIZE, EPOCHS)
+  autoencoder = train((data[0])[:10000], LEARNING_RATE, BATCH_SIZE, EPOCHS)
 
-  # Save and load back autoencoder model
+  # Save autoencoder model
   model_path = '../outputs/model'
   autoencoder.save(model_path)
-  autoencoder2 = Autoencoder.load(model_path)
-  autoencoder2.summary()
