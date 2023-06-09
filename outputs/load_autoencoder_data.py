@@ -13,19 +13,19 @@ import pickle
   A function to load desired data to the model
 '''
 
-class TrainingData:
-  """
-    A class to save training data for the variational autoencoder in case you need to access it from the internet. CC's compute nodes don't have access to the internet, so run this script on a login node, then once you have the data, use the SLURM scheduler
-  """
+# class TrainingData:
+#   """
+#     A class to save training data for the variational autoencoder in case you need to access it from the internet. CC's compute nodes don't have access to the internet, so run this script on a login node, then once you have the data, use the SLURM scheduler
+#   """
 
-  '''
-    Constructor
-  '''
-  def __init__(self, x_train, y_train, x_test, y_test):
-    self.x_train = x_train
-    self.y_train = y_train
-    self.x_test = x_test
-    self.y_test = y_test
+#   '''
+#     Constructor
+#   '''
+#   def __init__(self, x_train, y_train, x_test, y_test):
+#     self.x_train = x_train
+#     self.y_train = y_train
+#     self.x_test = x_test
+#     self.y_test = y_test
   
 def load_mnist():
   (x_train, y_train), (x_test, y_test) = mnist.load_data()
@@ -36,9 +36,11 @@ def load_mnist():
   x_test = x_test.astype("float32") / 255
   x_test = x_test.reshape(x_test.shape + (1,))
 
-  return TrainingData(x_train, y_train, x_test, y_test)
+  return [x_train, y_train, x_test, y_test]
 
 if __name__ == '__main__':
+  # Store Python instance of Autoencoder object in desired location
   data = load_mnist()
-  with open('../outputs/ae_data.pickle', 'wb') as file:
+  data_path = '../outputs/ae_data.pkl'
+  with open(data_path, 'wb') as file:
     pickle.dump(data, file)

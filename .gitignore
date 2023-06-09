@@ -8,4 +8,5 @@ inputs/raw/CK7 study_database_rescoring_final_TSAOv2.xlsx
 inputs/raw/Combined CK7 rescoring.xlsx
 inputs/raw
 outputs/SLURM_DEFAULT_OUT
-outputs/ae_data.pickle
+outputs/ae_data.pkl
+outputs/model

@@ -5,11 +5,11 @@
   link: https://www.youtube.com/watch?v=6fZdJKm-fSk&list=PL-wATfeyAMNpEyENTc-tVH5tfLGKtSWPp&index=6
 
   Date Created: June 8, 2023
-  Last Updated: June 8, 2023
+  Last Updated: June 9, 2023
 '''
 
 from autoencoder import Autoencoder
-from load_autoencoder_data import TrainingData
+# from load_autoencoder_data import TrainingData
 import pickle
 
 LEARNING_RATE = 0.0005
@@ -34,7 +34,15 @@ def train(x_train, learning_rate, batch_size, epochs):
   return ae
 
 if __name__ == '__main__':
+  # Load stored Python object from desired location
+  data_path = '../outputs/ae_data.pkl'
   data = None
-  with open('../outputs/ae_data.pickle', 'rb') as file:
+  with open(data_path, 'rb') as file:
     data = pickle.load(file)
-  autoencoder = train(data.x_train[:500], LEARNING_RATE, BATCH_SIZE, EPOCHS)
+  autoencoder = train((data[0])[:500], LEARNING_RATE, BATCH_SIZE, EPOCHS)
+
+  # Save and load back autoencoder model
+  model_path = '../outputs/model'
+  autoencoder.save(model_path)
+  autoencoder2 = Autoencoder.load(model_path)
+  autoencoder2.summary()
