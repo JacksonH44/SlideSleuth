@@ -11,4 +11,5 @@ outputs/SLURM_DEFAULT_OUT
 outputs/ae_data.pkl
 model/
 outputs/HNE
-img/
+img/latent_space.pdf
+img/reconstructed_images.pdf
