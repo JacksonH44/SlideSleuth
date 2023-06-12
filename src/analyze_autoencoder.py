@@ -31,7 +31,7 @@ def plot_reconstructed_images(images, reconstructed_images):
     ax = fig.add_subplot(2, num_images, i + num_images + 1)
     ax.axis("off")
     ax.imshow(reconstructed_image, cmap="gray_r")
-  plt.show()
+  plt.savefig('../img/reconstructed_images.pdf', format='png', transparent=True)
 
 def plot_images_encoded_in_latent_space(latent_representations, sample_labels):
   plt.figure(figsize=(10, 10))
@@ -44,7 +44,7 @@ def plot_images_encoded_in_latent_space(latent_representations, sample_labels):
     s=2
   )
   plt.colorbar()
-  plt.savefig('../outputs/latent_space.pdf')
+  plt.savefig('../img/latent_space.pdf', format='png', transparent=True)
 
 if __name__ == "__main__":
   # Load saved autoencoder

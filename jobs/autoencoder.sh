@@ -4,7 +4,7 @@
 #SBATCH --gres=gpu:1
 #SBATCH --mem=5000M
 #SBATCH --time=0-00:10
-#SBATCH --job-name=train_autoencoder
+#SBATCH --job-name=autoencoder
 #SBATCH --output=../outputs/SLURM_DEFAULT_OUT/autoencoder-%j.out
 #SBATCH --error=../outputs/SLURM_DEFAULT_OUT/autoencoder-%j.err
 #SBATCH --mail-type=ALL

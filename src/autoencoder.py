@@ -5,17 +5,47 @@
   link: https://www.youtube.com/watch?v=TtyoFTyJuEY&list=PL-wATfeyAMNpEyENTc-tVH5tfLGKtSWPp&index=4
   
   Date Created: June 7, 2023
-  Last Updated: June 8, 2023
+  Last Updated: June 12, 2023
 '''
 
 from tensorflow.keras import Model
-from tensorflow.keras.layers import Input, Conv2D, ReLU, BatchNormalization, Flatten, Dense, Reshape, Conv2DTranspose, Activation
+from tensorflow.keras.layers import Input, Conv2D, ReLU, BatchNormalization, Flatten, Dense, Reshape, Conv2DTranspose, Activation, Lambda
 from tensorflow.keras import backend as K
-from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.losses import MeanSquaredError, KLDivergence
+from keras.optimizers import Adam
 import numpy as np
 import os
 import pickle
+
+import tensorflow as tf
+
+# Make sure tensorflow doesn't evaluate any operations before the whole model architecture is built
+tf.compat.v1.disable_eager_execution()
+
+'''
+  Calculate the reconstruction term for the VAE loss function
+'''
+
+def calculate_reconstruction_loss(y_target, y_predicted):
+  error = y_target - y_predicted
+  reconstruction_loss = K.mean(K.square(error), axis=[1, 2, 3])
+  return reconstruction_loss
+
+'''
+  Calculate the standardisation term for the VAE loss function
+  
+'''
+def calculate_kl_loss(model):
+  # wrap '_calculate_kl_loss' such that it takes the model as an argument,
+  # returnsa function which can take arbitrary number of arguments
+  # (for compatibility with 'metrics' and utility in loss function)
+  # and returns the kl loss
+  # Reference: https://stackoverflow.com/questions/73981914/tensorflow-attribute-error-method-object-has-no-attribute-from-serialized
+  def _calculate_kl_loss(*args):
+    # D_KL = 1/2 * \Sigma {1 + log_variance - \mu - \sigma}
+    kl_loss = -0.5 * K.sum(1 + model.log_variance -
+                           K.square(model.mu) - K.exp(model.log_variance), axis=1)
+    return kl_loss
+  return _calculate_kl_loss
 
 class VAE:
   '''
@@ -31,6 +61,7 @@ class VAE:
     self.conv_kernels = conv_kernels # []
     self.conv_strides = conv_strides # []
     self.latent_space_dim = latent_space_dim
+    self.reconstruction_loss_weight = 1000
 
     self.encoder = None
     self.decoder = None
@@ -57,8 +88,11 @@ class VAE:
   '''
   def compile(self, learning_rate=0.0001):
     optimizer = Adam(learning_rate=learning_rate)
-    loss = MeanSquaredError() # standardization + regularisation
-    self.model.compile(optimizer=optimizer, loss=loss)
+    # standardization + regularisation for the loss function
+    self.model.compile(
+      optimizer=optimizer, 
+      loss=self._calculate_combined_loss,
+      metrics=[calculate_reconstruction_loss, calculate_kl_loss(self)])
 
   '''
     Training the model
@@ -107,7 +141,13 @@ class VAE:
     vae = VAE(*parameters)
     vae.load_weights(weights_path)
     return vae
-
+  
+  def _calculate_combined_loss(self, y_target, y_predicted):
+    reconstruction_loss = calculate_reconstruction_loss(y_target, y_predicted)
+    kl_loss = calculate_kl_loss(self)()
+    combined_loss = self.reconstruction_loss_weight * reconstruction_loss + kl_loss
+    return combined_loss
+    
   '''
     Make a directory if it doesn't exist
   '''
@@ -312,15 +352,42 @@ class VAE:
     return arch
 
   '''
-    Flatten the data and add a bottleneck (dense layer) to the architecture
+    Flatten the data, add a bottleneck with Guassion sampling (dense layer) to 
+    the architecture
   '''
   def _add_bottleneck(self, arch):
     # Store the info about the flattened model for the decoder
     self._shape_before_bottleneck = K.int_shape(arch)[1:] # [batch size, width, height, num_channels]
 
-    # Flatten model
+    # Flatten model and create layers for mean and variance
     arch = Flatten()(arch)
-    arch = Dense(self.latent_space_dim, name="encoder_bottleneck")(arch)
+    
+    # NOTE: we no longer have a sequential model, the architecture branches out
+    # into the mean layer and the log variance layer
+    self.mu = Dense(self.latent_space_dim, name="mu")(arch)
+    self.log_variance = Dense(self.latent_space_dim, name="log_variance")(arch)
+    
+    # Define the function for the lambda layer
+    def sample_point_normal(args):
+      mu, log_variance = args
+      
+      # Sample a point from a standard normal distribution
+      epsilon = K.random_normal(shape=K.shape(self.mu), mean=0, stddev=1)
+      
+      # The equation for sampling a point is:
+      #
+      # z = \mu + \Sigma * \epsilon 
+      #
+      # where \Sigma = exp((log_variance) / 2)
+      sampled_point = mu + K.exp(log_variance / 2) * epsilon
+      return sampled_point
+    
+    # Connect mean and log variance again by sampling a point from a normal 
+    # distribution
+    arch = Lambda(
+      sample_point_normal, 
+      name="encoder_output")([self.mu, self.log_variance])
+    
     return arch
 
 if __name__ == '__main__':
