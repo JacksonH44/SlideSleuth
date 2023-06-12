@@ -8,7 +8,7 @@
   Last Updated: June 9, 2023
 '''
 
-from autoencoder import Autoencoder
+from autoencoder import VAE
 import pickle
 
 LEARNING_RATE = 0.0005
@@ -16,17 +16,19 @@ BATCH_SIZE = 32
 EPOCHS = 20
 
 '''
-  A function that returns a trained autoencoder
+  A function that returns a trained variational autoencoder
 '''
 def train(x_train, learning_rate, batch_size, epochs):
   # YOU must specify the model parameters
-  ae = Autoencoder(
+  ae = VAE(
       input_shape=(28, 28, 1),
       conv_filters=(32, 64, 64, 64),
       conv_kernels=(3, 3, 3, 3),
       conv_strides=(1, 2, 2, 1),
       latent_space_dim=2
     )
+  
+  # Train model
   ae.summary()
   ae.compile(learning_rate)
   ae.train(x_train, batch_size, epochs)
@@ -38,8 +40,8 @@ if __name__ == '__main__':
   data = None
   with open(data_path, 'rb') as file:
     data = pickle.load(file)
-  autoencoder = train((data[0])[:10000], LEARNING_RATE, BATCH_SIZE, EPOCHS)
+  vae = train((data[0])[:10000], LEARNING_RATE, BATCH_SIZE, EPOCHS)
 
   # Save autoencoder model
   model_path = '../outputs/model'
-  autoencoder.save(model_path)
+  vae.save(model_path)

@@ -12,14 +12,14 @@ from tensorflow.keras import Model
 from tensorflow.keras.layers import Input, Conv2D, ReLU, BatchNormalization, Flatten, Dense, Reshape, Conv2DTranspose, Activation
 from tensorflow.keras import backend as K
 from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.losses import BinaryCrossentropy
+from tensorflow.keras.losses import MeanSquaredError, KLDivergence
 import numpy as np
 import os
 import pickle
 
-class Autoencoder:
+class VAE:
   '''
-    Autoencoder represents a Deep Convolutional autoencoder architecture
+    VAE represents a Deep Convolutional variational autoencoder architecture
   '''
 
   '''
@@ -51,13 +51,13 @@ class Autoencoder:
     self.encoder.summary()
     self.decoder.summary()
     self.model.summary()
-
+ 
   '''
     Compile model before use
   '''
   def compile(self, learning_rate=0.0001):
     optimizer = Adam(learning_rate=learning_rate)
-    loss = BinaryCrossentropy() # coudl also use mse
+    loss = MeanSquaredError() # standardization + regularisation
     self.model.compile(optimizer=optimizer, loss=loss)
 
   '''
@@ -72,7 +72,7 @@ class Autoencoder:
                    shuffle=True)
     
   '''
-    Save an autoencoder in the desired folder. If no such folder exists, build the folder
+    Save a vae in the desired folder. If no such folder exists, build the folder
   '''
   def save(self, save_folder="."):
     self._create_folder(save_folder)
@@ -86,7 +86,7 @@ class Autoencoder:
     self.model.load_weights(weights_path)
 
   '''
-    Reconstruct images using a trained autoencoder
+    Reconstruct images using a trained vae
   '''
   def reconstruct(self, images):
     # Pipe the images into the encoder, then pipe the result of the encoder back
@@ -104,9 +104,9 @@ class Autoencoder:
     weights_path = os.path.join(save_folder, "weights.h5")
     with open(parameters_path, "rb") as f:
       parameters = pickle.load(f)
-    autoencoder = Autoencoder(*parameters)
-    autoencoder.load_weights(weights_path)
-    return autoencoder
+    vae = VAE(*parameters)
+    vae.load_weights(weights_path)
+    return vae
 
   '''
     Make a directory if it doesn't exist
@@ -145,15 +145,15 @@ class Autoencoder:
   def _build(self):
     self._build_encoder()
     self._build_decoder()
-    self._build_autoencoder()
+    self._build_vae()
 
   '''
     Link together encoder and decoder (encoder is the input to the decoder)
   '''
-  def _build_autoencoder(self):
+  def _build_vae(self):
     model_input = self._model_input
     model_output = self.decoder(self.encoder(model_input))
-    self.model = Model(model_input, model_output, name="autoencoder")
+    self.model = Model(model_input, model_output, name="vae")
 
   '''
     A function that calls the building blocks of building the decoder
@@ -324,10 +324,10 @@ class Autoencoder:
     return arch
 
 if __name__ == '__main__':
-  ae = Autoencoder(
+  vae = VAE(
     input_shape=[28, 28, 1], 
     conv_filters=[32, 64, 64, 64], 
     conv_kernels=[3, 3, 3, 3], 
     conv_strides=[1, 2, 2, 1], 
     latent_space_dim=2)
-  ae.summary()
+  vae.summary()

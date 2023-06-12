@@ -5,12 +5,12 @@
   link: https://www.youtube.com/watch?v=-HqG2s4dxJ0&list=PL-wATfeyAMNpEyENTc-tVH5tfLGKtSWPp&index=8
 
   Date Created: June 9, 2023
-  Last Updated: June 9, 2023
+  Last Updated: June 12, 2023
 """
 
 import numpy as np
 import matplotlib.pyplot as plt
-from autoencoder import Autoencoder
+from autoencoder import VAE
 import pickle
 
 def select_images(images, labels, num_images=10):
@@ -44,12 +44,12 @@ def plot_images_encoded_in_latent_space(latent_representations, sample_labels):
     s=2
   )
   plt.colorbar()
-  plt.show()
+  plt.savefig('../outputs/latent_space.pdf')
 
 if __name__ == "__main__":
   # Load saved autoencoder
-  model_path = '../outputs/model'
-  autoencoder = Autoencoder.load(model_path)
+  model_path = '../model'
+  vae = VAE.load(model_path)
 
   # Load mnist data
   data_path = '../outputs/ae_data.pkl'
@@ -63,5 +63,13 @@ if __name__ == "__main__":
   sample_images, _ = select_images(x_test, y_test, num_sample_show)
 
   # Reconstruct the image with the autoencoder and plot them
-  reconstructed_images, _ = autoencoder.reconstruct(sample_images)
+  reconstructed_images, _ = vae.reconstruct(sample_images)
   plot_reconstructed_images(sample_images, reconstructed_images)
+  
+  # Sample images
+  num_images = 6000
+  sample_images, sample_labels = select_images(x_test, y_test, num_images)
+
+  # Visualize how the images are encoded in the latent space
+  _, latent_representations = vae.reconstruct(sample_images)
+  plot_images_encoded_in_latent_space(latent_representations, sample_labels)
