@@ -9,7 +9,6 @@ inputs/raw/Combined CK7 rescoring.xlsx
 inputs/raw
 outputs/SLURM_DEFAULT_OUT
 outputs/ae_data.pkl
-model/parameters.pkl
-model/weights.h5
+model/
 outputs/HNE
 img/

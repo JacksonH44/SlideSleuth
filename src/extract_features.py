@@ -21,8 +21,7 @@ def instantiate():
   # NOTE: can change pooling to 'max' if you wish
   # See https://keras.io/api/applications/resnet/ for more (May 23, 2023)
   model = ResNet50(weights='imagenet',
-                   include_top=False,
-                   pooling='avg')
+                   include_top=False)
   return model
 
 '''
