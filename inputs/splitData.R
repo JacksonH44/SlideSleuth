@@ -5,6 +5,7 @@
 #' Last Updated: June 12, 2023
 #' Author: Jackson Howe
  
+prevDir <- getwd()
 setwd("/scratch/jhowe4/inputs/GDC/paad_example")
 BiocManager::install("TCGAbiolinks")
 
@@ -26,7 +27,7 @@ library(TCGAbiolinks)
 
 findBarcodes <- function(dir) {
   # Create a vector of all files in the directory
-  files <- list.files(path=dir)
+  files <- list.files(path = dir)
 
   # Create a vector of barcodes
   barcodes <- character(length(files))
@@ -45,6 +46,50 @@ findBarcodes <- function(dir) {
   return(barcodes)
 }
 
+#' Generate a data frame consisting of all images and their labels
+#' 
+#' @description 
+#' Looping through the normal barcodes, then the tumour barcodes, find
+#' the file with which they're associated with, then store the file name
+#' and the classification (0 - normal, 1 - primary tumour) in a dataframe
+#' 
+#' @param normal vector of normal case barcodes
+#' @param tumour vector of primary tumour case barcodes
+#' @param dir path to the directory holding all images
+#' 
+#' @returns a dataframe of the image names and their classification
+
+generateDataFrame <- function(normal, tumour, dir) {
+  # Create a vector of all files in the directory
+  files <- list.files(path = dir)
+
+  # Create a data frame with file name and tumour presence (1 or 0) 
+  # as the columns
+  df <- data.frame()
+
+  # Find all files corresponding to normal cases
+  for (i in 1:length(normal)) {
+    # find the index of the file that matches the barcode
+    fileIdx <- match(1, grepl(normal[i], files))
+
+    # Add a new entry to the data frame for a normal case
+    entry <- c(files[fileIdx], 0)
+    df <- rbind(df, entry)
+  }
+
+  # Find all files corresponding to tumour cases
+  for (i in 1:length(tumour)) {
+    # find the index of the file that matches the barcode
+    fileIdx <- match(1, grepl(tumour[i], files))
+
+    # Add a new entry to the data frame for a tumour case
+    entry <- c(files[fileIdx], 1)
+    df <- rbind(df, entry)
+  }
+
+  return(df)
+}
+
 # Generate barcodes
 codes <- findBarcodes(getwd())
 
@@ -60,3 +105,10 @@ tumour <- TCGAquery_SampleTypes(
   typesample = c("TP")
 )
 
+# Generate a data frame
+df <- generateDataFrame(normal, tumour, getwd())
+colnames(df) <- c("file", "class")
+
+# Write the dataframe to a csv
+path <- file.path(prevDir, "../inputs/labeled_gdc_images.csv")
+write.csv(df, path, row.names = FALSE)
