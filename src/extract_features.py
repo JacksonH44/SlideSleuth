@@ -8,6 +8,8 @@ Last Updated: May 25, 2023
 from tensorflow.keras.applications.resnet50 import ResNet50
 from tensorflow.keras.preprocessing import image
 from tensorflow.keras.applications.resnet50 import preprocess_input
+from tensorflow.keras.layers import Reshape
+from tensorflow.keras.models import Model
 import numpy as np
 from os.path import exists
 import sys
@@ -22,6 +24,9 @@ def instantiate():
   # See https://keras.io/api/applications/resnet/ for more (May 23, 2023)
   model = ResNet50(weights='imagenet',
                    include_top=False)
+  output = model.output
+  reshaped_output = Reshape((256, 512, 1))(output)
+  model = Model(inputs=model.input, outputs=reshaped_output)
   return model
 
 '''
@@ -40,6 +45,8 @@ def extract_features(model, img_path, output_path):
   # Convert PIL image to numpy array
   x = image.img_to_array(img)
   x = np.expand_dims(x, axis=0)
+  print(f"The shape of the image is {np.shape(x)}")
+
 
   # Adequate image to format ResNet50 requires (caffe style)
   # Visit https://www.tensorflow.org/api_docs/python/tf/keras/applications/resnet50/preprocess_input
@@ -49,16 +56,18 @@ def extract_features(model, img_path, output_path):
 
   # Extract feature vector
   # Current length is 2048
-  features = model.predict(x)
+  features = model.predict(x)  
+  features = features[0, :, :, :]
+  print(f"The shape of the feature vector is {np.shape(features)}")
 
   # Write vector to the csvfile specified by output_path
-  if exists(output_path):
-    mode = 'a'
-  else:
-    mode = 'w'
+  # if exists(output_path):
+  #   mode = 'a'
+  # else:
+  #   mode = 'w'
 
-  with open(output_path, mode, newline='\n') as csvfile:
-      np.savetxt(csvfile, features, delimiter=",", fmt="%1.5f")
+  # with open(output_path, mode, newline='\n') as csvfile:
+  #     np.savetxt(csvfile, features, delimiter=",", fmt="%1.5f")
 
 
 if __name__ == '__main__':
