@@ -9,6 +9,8 @@ inputs/raw/Combined CK7 rescoring.xlsx
 inputs/raw
 outputs/SLURM_DEFAULT_OUT
 outputs/ae_data.pkl
+outputs/corruptions.txt
 model/
 outputs/HNE
 img/
+test/jupyter_py3
