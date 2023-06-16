@@ -13,5 +13,9 @@ outputs/corruptions.txt
 model/
 outputs/HNE
 img/
+<<<<<<< HEAD
 test/jupyter_py3
 container.sif
+=======
+test/jupyter_py3
+>>>>>>> 6b63d98caaa7538909d077d01d8cad21095f7e09
