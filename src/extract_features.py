@@ -1,7 +1,9 @@
 '''
 Description: A file that extracts a feature vector from a test image using transfer learning
+
 Author: Jackson Howe
-Last Updated: May 25, 2023
+Data Created: May 25, 2023
+Last Updated: June 15, 2023
 '''
 
 # Imports
@@ -21,7 +23,8 @@ def instantiate():
   # NOTE: can change pooling to 'max' if you wish
   # See https://keras.io/api/applications/resnet/ for more (May 23, 2023)
   model = ResNet50(weights='imagenet',
-                   include_top=False)
+                   include_top=False,
+                   pooling='avg')
   return model
 
 '''
@@ -49,8 +52,9 @@ def extract_features(model, img_path, output_path):
 
   # Extract feature vector
   # Current length is 2048
-  features = model.predict(x)
-
+  features = model.predict(x)  
+  features = features[0, :, :, :]
+  
   # Write vector to the csvfile specified by output_path
   if exists(output_path):
     mode = 'a'

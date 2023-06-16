@@ -392,9 +392,10 @@ class VAE:
 
 if __name__ == '__main__':
   vae = VAE(
-    input_shape=[28, 28, 1], 
+    input_shape=[229, 229, 3], 
     conv_filters=[32, 64, 64, 64], 
     conv_kernels=[3, 3, 3, 3], 
     conv_strides=[1, 2, 2, 1], 
-    latent_space_dim=2)
+    latent_space_dim=6)
   vae.summary()
+  print(vae._shape_before_bottleneck)

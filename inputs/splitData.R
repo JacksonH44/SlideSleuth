@@ -2,12 +2,14 @@
 #' is classified (either solid tissue normal or primary tumour)
 #' 
 #' Date Created: June 12, 2023
-#' Last Updated: June 12, 2023
+#' Last Updated: June 15, 2023
 #' Author: Jackson Howe
  
 prevDir <- getwd()
 setwd("/scratch/jhowe4/inputs/GDC/paad_example")
 BiocManager::install("TCGAbiolinks")
+
+outPath <- "/scratch/jhowe4/outputs/GDC/paad_example/labeled_paad_example_images.csv"
 
 library(TCGAbiolinks)
 
@@ -46,9 +48,12 @@ findBarcodes <- function(dir) {
   return(barcodes)
 }
 
-#' Generate a data frame consisting of all images and their labels
+#' Create a dataframe of GDC data
 #' 
 #' @description 
+#' Generate a data frame consisting of all images and their labels
+#' 
+#' @details 
 #' Looping through the normal barcodes, then the tumour barcodes, find
 #' the file with which they're associated with, then store the file name
 #' and the classification (0 - normal, 1 - primary tumour) in a dataframe
@@ -110,5 +115,4 @@ df <- generateDataFrame(normal, tumour, getwd())
 colnames(df) <- c("file", "class")
 
 # Write the dataframe to a csv
-path <- file.path(prevDir, "../inputs/labeled_gdc_images.csv")
-write.csv(df, path, row.names = FALSE)
+write.csv(df, outPath, row.names = FALSE)
