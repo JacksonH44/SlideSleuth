@@ -12,10 +12,9 @@ outputs/ae_data.pkl
 outputs/corruptions.txt
 model/
 outputs/HNE
+outputs/HNE_2
 img/
-<<<<<<< HEAD
 test/jupyter_py3
 container.sif
-=======
-test/jupyter_py3
->>>>>>> 6b63d98caaa7538909d077d01d8cad21095f7e09
+src/transfer_learning_v2.py
+src/transfer_learning_v3.py

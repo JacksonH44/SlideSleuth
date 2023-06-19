@@ -4,11 +4,13 @@
 
   Author: Jackson Howe
   Date Created: June 6, 2023
-  Last Updated: June 6, 2023
+  Last Updated: June 19, 2023
 '''
 
-import numpy as np
 import pandas as pd
+
+# Specify global variable output file
+OUT_FILE = '../outputs/HNE_2/labels.csv'
 
 '''
   A function that takes in a dataframe representing a case and computes the smoothed label 
@@ -21,6 +23,14 @@ def smooth_label(df):
   label = (totals.loc['invasive'] * 1) + (totals.loc['probable invasive'] * 0.5) + (totals.loc['probable noninvasive'] * 0.5)
   return label
 
+def write_csv(labels):
+  """A function that writes labels to a .csv file
+
+  Args:
+      labels (_type_): _description_
+  """
+  pass
+
 if __name__ == '__main__':
   # Read in the 4 physicians scoring excel files
 
@@ -28,7 +38,7 @@ if __name__ == '__main__':
     '../inputs/raw/CK7 study_database_rescoring_final_TSAOv2.xlsx', 
     sheet_name='CK7',
     names=['case', 'invasive', 'probable invasive', 'probable noninvasive', 'noninvasive', 'simple', 'complex', 'single cell', 'comments'],
-    usecols='B:E'
+    usecols='A:E'
     )
   tsao_df = tsao_df.fillna(0)
 
@@ -37,7 +47,7 @@ if __name__ == '__main__':
       sheet_name='CK7',
       names=['case', 'invasive', 'probable invasive', 'probable noninvasive',
              'noninvasive', 'simple', 'complex', 'single cell', 'comments'],
-      usecols='B:E'
+      usecols='A:E'
   )
   ey_df = ey_df.fillna(0)
 
@@ -46,7 +56,7 @@ if __name__ == '__main__':
       sheet_name='CK7',
       names=['case', 'invasive', 'probable invasive', 'probable noninvasive',
              'noninvasive', 'simple', 'complex', 'single cell', 'comments'],
-      usecols='B:E'
+      usecols='A:E'
   )
   mrc_df = mrc_df.fillna(0)
 
@@ -55,11 +65,12 @@ if __name__ == '__main__':
       sheet_name='CK7',
       names=['case', 'invasive', 'probable invasive', 'probable noninvasive',
              'noninvasive', 'simple', 'complex', 'single cell', 'comments'],
-      usecols='B:E'
+      usecols='A:E'
   )
   najd_df = najd_df.fillna(0)
   
   label_totals = []
+  case_names = []
 
   # Loop through all the rows
   for row in range(tsao_df.shape[0]):
@@ -67,9 +78,14 @@ if __name__ == '__main__':
     merged = pd.concat([tsao_df.iloc[row], ey_df.iloc[row], mrc_df.iloc[row], najd_df.iloc[row]], axis=1)
 
     # Generate the smoothed label for the case
-    label = smooth_label(merged)
+    label = smooth_label(merged.iloc[1:, :])
+    
+    case = merged.iloc[0, 0]
+    case_names.append(case)
 
     # Add to master list of labels
     label_totals.append(float(f'{label:.5f}'))
 
-  print(label_totals)
+  # Convert the two lists to a dataframe, then write the dataframe to a csv file
+  final_df = pd.DataFrame.from_dict({'case': case_names, 'score': label_totals})
+  final_df.to_csv(OUT_FILE, index=False)
