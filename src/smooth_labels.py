@@ -23,13 +23,16 @@ def smooth_label(df):
   label = (totals.loc['invasive'] * 1) + (totals.loc['probable invasive'] * 0.5) + (totals.loc['probable noninvasive'] * 0.5)
   return label
 
-def write_csv(labels):
+def write_csv(case_names, label_totals):
   """A function that writes labels to a .csv file
 
   Args:
-      labels (_type_): _description_
+      case_names (list<string>): names of the cases
+      label_totals (list<float32>): real-valued labels for the corresponding case
   """
-  pass
+  # Convert the two lists to a dataframe, then write the dataframe to a csv file
+  final_df = pd.DataFrame.from_dict({'case': case_names, 'score': label_totals})
+  final_df.to_csv(OUT_FILE, index=False)
 
 if __name__ == '__main__':
   # Read in the 4 physicians scoring excel files
@@ -86,6 +89,4 @@ if __name__ == '__main__':
     # Add to master list of labels
     label_totals.append(float(f'{label:.5f}'))
 
-  # Convert the two lists to a dataframe, then write the dataframe to a csv file
-  final_df = pd.DataFrame.from_dict({'case': case_names, 'score': label_totals})
-  final_df.to_csv(OUT_FILE, index=False)
+  write_csv(case_names, label_totals)
