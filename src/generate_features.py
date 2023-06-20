@@ -35,7 +35,7 @@
 import sys
 from os.path import exists, isdir
 from os import listdir, makedirs
-import transfer_learning
+import extract_features
 from shutil import rmtree
 
 '''
@@ -46,30 +46,7 @@ from shutil import rmtree
 
 def write_csv(src_dir, dest_dir):
   # Instantiate the model, take care to do this only once, as it is much faster than through each time in a
-  # loop
-  model = transfer_learning.instantiate()
-
-  # The output directory already exists
-  if exists(dest_dir):
-    # Ensure user is okay with overwriting the directory
-    user_response = ""
-    while user_response == "":
-      prompt = input(
-        f"Do you want to overwrite the directory tree rooted at '{dest_dir}'? [Y/n]\n")
-      if prompt == 'Y':
-        user_response = 'y'
-      elif prompt == 'n':
-        user_response = 'n'
-      else:
-        print("try again.\n")
-        user_response = ""
-
-    # Terminate the program if the user doesn't want to overwrite their directory
-    if user_response == 'n':
-      raise KeyboardInterrupt
-    else:
-      # Remove the existing directory
-      rmtree(dest_dir)
+  model = extract_features.instantiate()
 
   for file in listdir(src_dir):
     cur_path = f"{src_dir}/{file}"
@@ -87,7 +64,7 @@ def write_csv(src_dir, dest_dir):
         
         # Extract features from each image tile
         for img_tile in listdir(cur_path):
-          transfer_learning.extract_features(model, f'{cur_path}/{img_tile}', output_folder)
+          extract_features.extract_features(model, f'{cur_path}/{img_tile}', output_folder)
 
 if __name__ == '__main__':
   # Verify source directory

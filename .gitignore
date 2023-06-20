@@ -13,6 +13,7 @@ outputs/corruptions.txt
 model/
 outputs/HNE
 outputs/HNE_2
+outputs/HNE_features
 img/
 test/jupyter_py3
 container.sif

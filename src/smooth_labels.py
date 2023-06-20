@@ -39,7 +39,7 @@ if __name__ == '__main__':
 
   tsao_df = pd.read_excel(
     '../inputs/raw/CK7 study_database_rescoring_final_TSAOv2.xlsx', 
-    sheet_name='CK7',
+    sheet_name='HNE',
     names=['case', 'invasive', 'probable invasive', 'probable noninvasive', 'noninvasive', 'simple', 'complex', 'single cell', 'comments'],
     usecols='A:E'
     )
@@ -47,7 +47,7 @@ if __name__ == '__main__':
 
   ey_df = pd.read_excel(
       '../inputs/raw/CK7 study_database_rescoring_final_EY.xlsx',
-      sheet_name='CK7',
+      sheet_name='HNE',
       names=['case', 'invasive', 'probable invasive', 'probable noninvasive',
              'noninvasive', 'simple', 'complex', 'single cell', 'comments'],
       usecols='A:E'
@@ -56,7 +56,7 @@ if __name__ == '__main__':
 
   mrc_df = pd.read_excel(
       '../inputs/raw/CK7 study_database_rescoring_final_MRCv2.xlsx',
-      sheet_name='CK7',
+      sheet_name='HNE',
       names=['case', 'invasive', 'probable invasive', 'probable noninvasive',
              'noninvasive', 'simple', 'complex', 'single cell', 'comments'],
       usecols='A:E'
@@ -65,7 +65,7 @@ if __name__ == '__main__':
 
   najd_df = pd.read_excel(
       '../inputs/raw/CK7 study_database_rescoring_final-Najd.xlsx',
-      sheet_name='CK7',
+      sheet_name='HNE',
       names=['case', 'invasive', 'probable invasive', 'probable noninvasive',
              'noninvasive', 'simple', 'complex', 'single cell', 'comments'],
       usecols='A:E'
