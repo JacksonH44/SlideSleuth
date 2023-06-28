@@ -45,7 +45,7 @@ def model_builder(hp):
   
   # compile the model
   model.compile(
-    optimizer=keras.optimizers.Adam(learning_rate=hp_learning_rate), 
+    optimizer=tf.keras.optimizers.Adam(learning_rate=hp_learning_rate), 
     loss=keras.losses.BinaryCrossentropy(), 
     metrics = ['accuracy'])
 

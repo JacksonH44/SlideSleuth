@@ -105,7 +105,7 @@ def loss_func(encoder_mu, encoder_log_variance):
   """
   def vae_reconstruction_loss(y_true, y_predict):
     reconstruction_loss_factor = 1000
-    reconstruction_loss = K.mean(K.square(y_true-y_predict), axis=[1, 2, 3])
+    reconstruction_loss = K.mean(K.square(y_true-y_predict), axis=[1])
     return reconstruction_loss_factor * reconstruction_loss
 
   def vae_kl_loss(encoder_mu, encoder_log_variance):
@@ -146,21 +146,25 @@ if __name__ == '__main__':
   vae = Model(vae_input, vae_decoder_output, name="vae")
   vae.summary()
   
+  z_mean = encoder.get_layer("z_mean")
+  z_log_var = encoder.get_layer("z_log_var")
+  
   # Compile the VAE
   vae.compile(
-    optimizer=keras.optimizers.Adam(lr=0.0005), 
-    loss=loss_func(encoder_mu, encoder_log_variance)
+    optimizer='adam', 
+    loss=loss_func(z_mean, z_log_var)
   )
 
   # Generate training data from feature vectors
   features_path = '../outputs/HNE_features'
   training_data = load_csv_files(features_path)
   print(f"Training data shape: {training_data.shape}")
+  print(f"Length of training data: {len(training_data)}")
 
-  # # Fit the autoencoder model to minimize reconstruction loss
-  # autoencoder.fit(
-  #   training_data,
-  #   training_data,
-  #   epochs=10,
-  #   batch_size=32
-  # )
+  # Fit the autoencoder model to minimize reconstruction loss
+  vae.fit(
+    training_data,
+    training_data,
+    epochs=10,
+    batch_size=32
+  )

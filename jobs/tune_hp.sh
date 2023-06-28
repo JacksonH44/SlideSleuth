@@ -18,7 +18,6 @@ module load cuda/11.7 cudnn
 module load scipy-stack
 source $ENVDIR/bin/activate
 pip install --no-index tensorflow
-pip install --no-index keras-tuner
 python ../src/tune_hp.py
 deactivate
 rm -rf $ENVDIR
