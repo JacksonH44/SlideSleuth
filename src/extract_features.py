@@ -53,6 +53,7 @@ def extract_features(model, img_path, output_path):
     # or https://stackoverflow.com/questions/47555829/preprocess-input-method-in-keras for more info
     # (May 23, 2023)
     x = preprocess_input(x)
+    print(x.shape)
 
     # Extract feature vector
     # Current length is 2048

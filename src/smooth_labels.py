@@ -39,35 +39,32 @@ if __name__ == '__main__':
 
   tsao_df = pd.read_excel(
     '../inputs/raw/CK7 study_database_rescoring_final_TSAOv2.xlsx', 
-    sheet_name='HNE',
-    names=['case', 'invasive', 'probable invasive', 'probable noninvasive', 'noninvasive', 'simple', 'complex', 'single cell', 'comments'],
+    sheet_name='HE',
+    names=['case', 'invasive', 'probable invasive', 'probable noninvasive', 'noninvasive', 'micropapillary', 'stas', 'comments'],
     usecols='A:E'
     )
   tsao_df = tsao_df.fillna(0)
 
   ey_df = pd.read_excel(
       '../inputs/raw/CK7 study_database_rescoring_final_EY.xlsx',
-      sheet_name='HNE',
-      names=['case', 'invasive', 'probable invasive', 'probable noninvasive',
-             'noninvasive', 'simple', 'complex', 'single cell', 'comments'],
+      sheet_name='HE',
+      names=['case', 'invasive', 'probable invasive', 'probable noninvasive', 'noninvasive', 'micropapillary', 'stas', 'comments'],
       usecols='A:E'
   )
   ey_df = ey_df.fillna(0)
 
   mrc_df = pd.read_excel(
       '../inputs/raw/CK7 study_database_rescoring_final_MRCv2.xlsx',
-      sheet_name='HNE',
-      names=['case', 'invasive', 'probable invasive', 'probable noninvasive',
-             'noninvasive', 'simple', 'complex', 'single cell', 'comments'],
+      sheet_name='HE',
+       names=['case', 'invasive', 'probable invasive', 'probable noninvasive', 'noninvasive', 'micropapillary', 'stas', 'comments'],
       usecols='A:E'
   )
   mrc_df = mrc_df.fillna(0)
 
   najd_df = pd.read_excel(
       '../inputs/raw/CK7 study_database_rescoring_final-Najd.xlsx',
-      sheet_name='HNE',
-      names=['case', 'invasive', 'probable invasive', 'probable noninvasive',
-             'noninvasive', 'simple', 'complex', 'single cell', 'comments'],
+      sheet_name='HE',
+      names=['case', 'invasive', 'probable invasive', 'probable noninvasive', 'noninvasive', 'micropapillary', 'stas', 'comments'],
       usecols='A:E'
   )
   najd_df = najd_df.fillna(0)

@@ -1,8 +1,10 @@
 #!/bin/bash
 #SBATCH --account=def-sushant
+#SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=6
-#SBATCH --mem=12000M
-#SBATCH --time=0-02:30
+#SBATCH --mem=36G
+#SBATCH --time=0-16:00
+#SBATCH --nodes=3
 #SBATCH --job-name=generate_features
 #SBATCH --output=../outputs/SLURM_DEFAULT_OUT/generate_features-%j.out
 #SBATCH --error=../outputs/SLURM_DEFAULT_OUT/generate_features-%j.err

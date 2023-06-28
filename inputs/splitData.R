@@ -9,7 +9,7 @@ prevDir <- getwd()
 setwd("/scratch/jhowe4/inputs/GDC/paad_example")
 BiocManager::install("TCGAbiolinks")
 
-outPath <- "/scratch/jhowe4/outputs/GDC/paad_example/labeled_paad_example_images.csv"
+outPath <- "/scratch/jhowe4/outputs/GDC/paad_example2/labels.csv"
 
 library(TCGAbiolinks)
 

@@ -4,9 +4,9 @@
 #SBATCH --cpus-per-task=6
 #SBATCH --mem=5000M
 #SBATCH --time=0-02:30
-#SBATCH --job-name=transfer_learning_classification
-#SBATCH --output=../outputs/SLURM_DEFAULT_OUT/transfer_learning_classification-%j.out
-#SBATCH --error=../outputs/SLURM_DEFAULT_OUT/transfer_learning_classification-%j.err
+#SBATCH --job-name=tl_classification
+#SBATCH --output=../outputs/SLURM_DEFAULT_OUT/tl_classification-%j.out
+#SBATCH --error=../outputs/SLURM_DEFAULT_OUT/tl_classification-%j.err
 
 module load python
 ENVDIR=/tmp/$RANDOM
@@ -17,6 +17,6 @@ module load scipy-stack
 source $ENVDIR/bin/activate
 pip install --no-index tensorflow
 pip install --no-index scikit-learn
-python ../src/transfer_learning_classification.py /scratch/jhowe4/outputs/GDC/paad_example2
+python ../src/tl_classification.py /scratch/jhowe4/outputs/GDC/paad_example2
 deactivate
 rm -rf $ENVDIR

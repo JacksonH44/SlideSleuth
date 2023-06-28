@@ -4,21 +4,49 @@
   
   Author: Jackson Howe
   Date Created: June 20, 2023
-  Last Updated: June 20, 2023
+  Last Updated: June 27, 2023
 '''
 import tensorflow as tf
 import numpy as np
+import pandas as pd
 import tensorflow.keras.backend as K
+from tensorflow.keras.layers import Input, Dense, Lambda
+from tensorflow.keras.models import Model
+from tensorflow.keras import layers
+from tensorflow import keras
+from os import listdir
+from os.path import join
 
-latent_dim = 10 # Dimensionality of the latent space
+tf.compat.v1.disable_eager_execution()
 
-# Encoder 
-encoder_inputs = tf.keras.Input(shape=(2048,))
-x = tf.keras.layers.Dense(512, activation='relu')(encoder_inputs)
-x = tf.keras.layers.Dense(400, activation='relu')(x)
-x = tf.keras.layers.Dense(240, activation='relu')(x)
-z_mean = tf.keras.layers.Dense(latent_dim)(x)
-z_log_var = tf.keras.layers.Dense(latent_dim)(x)
+latent_dim = 2 # Dimensionality of the latent space
+
+def load_csv_files(directory):
+  """A function that transforms csv files into a numpy array for vae training
+
+  Args:
+      directory (String): path to the root directory holding all the feature 
+      csv files
+
+  Returns:
+      np.ndarray: A numpy array of each training observation
+  """
+  
+  # Get filenames of all feature files
+  all_files = []
+  for file in listdir(directory):
+    for mag in listdir(join(directory, file)):
+      for feature in listdir(join(directory, file, mag)):
+        all_files.append(join(directory, file, mag, feature))
+        
+  data = []
+  
+  # Concatenate into a list of numpy arrays
+  for i in range(10):
+    df = pd.read_csv(all_files[i], header=None)
+    data.append(df.values)
+    
+  return np.concatenate(data, axis=0)
 
 # Reparameterization trick
 def sampling(args):
@@ -26,23 +54,113 @@ def sampling(args):
   epsilon = K.random_normal(shape=(K.shape(z_mean)[0], latent_dim), mean=0, stddev=1)
   return z_mean + tf.keras.backend.exp(0.5 * z_log_var) * epsilon
 
-z = tf.keras.layers.Lambda(sampling)([z_mean, z_log_var])
+def build_autoencoder_parts(input_dim):
+  """Build the autoencoder architecture and return a compiled model
 
-# Decoder
-decoder_inputs = tf.keras.layers.Dense(240, activation='relu')(z)
-decoder_inputs = tf.keras.layers.Dense(400, activation='relu')(z)
-decoder_inputs = tf.keras.layers.Dense(512, activation='relu')(z)
-decoder_outputs = tf.keras.layers.Dense(2048, activation='sigmoid')(decoder_inputs)
+  Returns:
+      tf.keras.Model: The compiled autoencoder
+  """
+  # Define the input shape of the autoencoder
+  input_shape = (input_dim,)
+  
+  # Define the encoder architecture
+  inputs = Input(shape=input_shape)
+  x = Dense(128, activation='relu')(inputs)
+  x = Dense(64, activation='relu')(x)
+  x = Dense(32, activation='relu')(x)
+  
+  # Define sampling layers
+  z_mean = Dense(latent_dim, name="z_mean")(x)
+  z_log_var = Dense(latent_dim, name="z_log_var")(x)
+  
+  encoder_output = Lambda(sampling, name="encoder_output")([z_mean, z_log_var])
+  
+  # Make encoder
+  encoder = Model(inputs, encoder_output, name="encoder")
+  encoder.summary()
+  
+  # Define the decoder architecture
+  latent_inputs = Input(shape=(latent_dim,))
+  x = Dense(32, activation='relu')(latent_inputs)
+  x = Dense(64, activation='relu')(x)
+  x = Dense(128, activation='relu')(x)
+  decoder_outputs = Dense(input_dim, activation='sigmoid')(x)
+  
+  # Make decoder
+  decoder = Model(latent_inputs, decoder_outputs, name="decoder")
+  decoder.summary()
+  
+  return encoder, decoder
 
-# Define VAE as a model
-vae = tf.keras.Model(encoder_inputs, decoder_outputs)
+# Reference: https://blog.paperspace.com/how-to-build-variational-autoencoder-keras/
+def loss_func(encoder_mu, encoder_log_variance):
+  """A custom loss function for a variational autoencoder. The loss function 
+  consists of a reconstruction loss, which brings about the efficiency of the 
+  vae, and a kl loss term that makes the latent space regular
 
-# Define loss function for VAE
-reconstruction_loss = tf.keras.losses.binary_crossentropy(encoder_inputs, decoder_outputs) * 2048
-kl_loss = -0.5 * K.mean(1 + z_log_var - K.square(z_mean) - K.exp(z_log_var), axis=-1)
-vae_loss = K.mean(reconstruction_loss + kl_loss)
-vae.add_loss(vae_loss)
+  Args:
+      encoder_mu (tf.keras.layers.Dense): The mean layer of the encoder
+      encoder_log_variance (tf.keras.layers.Dense): The log variance layer of 
+      the encoder
+  """
+  def vae_reconstruction_loss(y_true, y_predict):
+    reconstruction_loss_factor = 1000
+    reconstruction_loss = K.mean(K.square(y_true-y_predict), axis=[1, 2, 3])
+    return reconstruction_loss_factor * reconstruction_loss
 
-# Compile the VAE
-vae.compile(optimizer='adam')
-vae.summary()
+  def vae_kl_loss(encoder_mu, encoder_log_variance):
+    kl_loss = -0.5 * K.sum(1.0 + encoder_log_variance - K.square(encoder_mu) - K.exp(encoder_log_variance), axis=1)
+    return kl_loss
+
+  def vae_kl_loss_metric(y_true, y_predict):
+    kl_loss = -0.5 * K.sum(1.0 + encoder_log_variance - K.square(encoder_mu) - K.exp(encoder_log_variance), axis=1)
+    return kl_loss
+
+  def vae_loss(y_true, y_predict):
+    reconstruction_loss = vae_reconstruction_loss(y_true, y_predict)
+    kl_loss = vae_kl_loss(y_true, y_predict)
+
+    loss = reconstruction_loss + kl_loss
+    return loss
+
+  return vae_loss
+
+if __name__ == '__main__':
+  # Build autoencoder
+  input_dim = 2048
+  encoder, decoder = build_autoencoder_parts(input_dim)
+  
+  # Reference for these lines: https://blog.paperspace.com/how-to-build-variational-autoencoder-keras/
+  
+  # Create a later representing the input to the vae
+  vae_input = Input(shape=(input_dim,), name="vae_input")
+  
+  # The vae input layer is then connected to the encoder to encode the input 
+  # and return the latent vector
+  vae_encoder_output = encoder(vae_input)
+  
+  # The output of the encoder is connected to the decoder
+  vae_decoder_output = decoder(vae_encoder_output)
+  
+  # Wrap in a model object
+  vae = Model(vae_input, vae_decoder_output, name="vae")
+  vae.summary()
+  
+  # Compile the VAE
+  vae.compile(
+    optimizer=keras.optimizers.Adam(lr=0.0005), 
+    loss=loss_func(encoder_mu, encoder_log_variance)
+  )
+
+  # Generate training data from feature vectors
+  features_path = '../outputs/HNE_features'
+  training_data = load_csv_files(features_path)
+  print(f"Training data shape: {training_data.shape}")
+
+  # # Fit the autoencoder model to minimize reconstruction loss
+  # autoencoder.fit(
+  #   training_data,
+  #   training_data,
+  #   epochs=10,
+  #   batch_size=32
+  # )

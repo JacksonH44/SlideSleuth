@@ -2,11 +2,11 @@
 #SBATCH --account=def-sushant
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=6
-#SBATCH --time=0-10:00:00
-#SBATCH --mem=24G
-#SBATCH --job-name=transfer_learning
-#SBATCH --output=../outputs/SLURM_DEFAULT_OUT/transfer_learning-%j.out
-#SBATCH --error=../outputs/SLURM_DEFAULT_OUT/transfer_learning-%j.err
+#SBATCH --time=0-14:30:00
+#SBATCH --mem=70G
+#SBATCH --job-name=tune_hp
+#SBATCH --output=../outputs/SLURM_DEFAULT_OUT/tune_hp-%j.out
+#SBATCH --error=../outputs/SLURM_DEFAULT_OUT/tune_hp-%j.err
 #SBATCH --mail-type=all
 #SBATCH --mail-user=j2howe@uwaterloo.ca
 
@@ -18,7 +18,7 @@ module load cuda/11.7 cudnn
 module load scipy-stack
 source $ENVDIR/bin/activate
 pip install --no-index tensorflow
-pip install --no-index pillow
-python ../src/transfer_learning.py
+pip install --no-index keras-tuner
+python ../src/tune_hp.py
 deactivate
 rm -rf $ENVDIR

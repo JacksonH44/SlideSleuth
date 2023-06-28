@@ -18,10 +18,10 @@ module load openslide
 source $ENVDIR/bin/activate
 pip install --no-index openslide-python
 
-input_folder="/home/jhowe4/projects/def-sushant/jhowe4/TissueTango/inputs/raw/HNE"
-train_folder="/home/jhowe4/projects/def-sushant/jhowe4/TissueTango/outputs/HNE_2/train"
-valid_folder="/home/jhowe4/projects/def-sushant/jhowe4/TissueTango/outputs/HNE_2/valid"
-test_folder="/home/jhowe4/projects/def-sushant/jhowe4/TissueTango/outputs/HNE_2/test"
+input_folder="/home/jhowe4/projects/def-sushant/jhowe4/TissueTango/inputs/raw/CK7"
+train_folder="/home/jhowe4/projects/def-sushant/jhowe4/TissueTango/outputs/CK7/train"
+valid_folder="/home/jhowe4/projects/def-sushant/jhowe4/TissueTango/outputs/CK7/valid"
+test_folder="/home/jhowe4/projects/def-sushant/jhowe4/TissueTango/outputs/CK7/test"
 
 mkdir -p $train_folder
 mkdir -p $valid_folder
@@ -31,9 +31,9 @@ mkdir -p $test_folder
 # on them
 output_folder=$train_folder
 for file in $(ls $input_folder); do
-  if [ "$file" = "79.svs" ]; then
+  if [ "$file" = "82.svs" ]; then
     output_folder=$valid_folder
-  elif [ "$file" = "87.svs" ]; then
+  elif [ "$file" = "92.svs" ]; then
     output_folder=$test_folder
   fi
   python ../src/deepzoom_tile.py -s 224 -e 0 -j 32 -B 50 --output="$output_folder" "$input_folder/$file"

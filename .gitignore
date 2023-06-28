@@ -10,6 +10,7 @@ inputs/raw
 outputs/SLURM_DEFAULT_OUT
 outputs/ae_data.pkl
 outputs/corruptions.txt
+outputs/CK7
 model/
 outputs/HNE
 outputs/HNE_2
