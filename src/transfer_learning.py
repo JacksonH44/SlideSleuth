@@ -129,21 +129,24 @@ if __name__ == '__main__':
   train_ds = datagen.flow_from_directory(
     '/scratch/jhowe4/outputs/GDC/paad_example2/train',
     target_size=(224, 224),
-    class_mode='binary'
+    class_mode='categorical',
+    batch_size=32
   )
   
   # Testing dataset
   test_ds = datagen.flow_from_directory(
     '/scratch/jhowe4/outputs/GDC/paad_example2/test',
     target_size=(224, 224),
-    class_mode='binary'
+    class_mode='categorical',
+    batch_size=32
   )
   
   # Validation dataset
   valid_ds = datagen.flow_from_directory(
     '/scratch/jhowe4/outputs/GDC/paad_example2/valid',
     target_size=(224, 224),
-    class_mode='binary'
+    class_mode='categorical',
+    batch_size=32
   )
   
   # Build model
@@ -153,7 +156,7 @@ if __name__ == '__main__':
   model.add(tf.keras.applications.ResNet50(include_top = False, pooling = 'avg', weights ='imagenet'))
   
   # 2nd layer as Dense for 2-class classification
-  model.add(tf.keras.layers.Dense(2, activation = 'relu'))
+  model.add(tf.keras.layers.Dense(2, activation = 'sigmoid'))
   
   # Not training the resnet on the new data set. Using the pre-trained weigths
   model.layers[0].trainable = False  
@@ -162,10 +165,10 @@ if __name__ == '__main__':
   model.compile(
     optimizer = 'adam', 
     loss = 'binary_crossentropy', 
-    metrics = ['accuracy'])
+    metrics = [tf.keras.metrics.AUC()])
   
   # Fit the model
-  fit_history = model.fit_generator(
+  fit_history = model.fit(
     train_ds,
     steps_per_epoch=4,
     validation_data=valid_ds,
@@ -174,7 +177,7 @@ if __name__ == '__main__':
   )
   
   # Save the model weights
-  model.save_weights('../model/tf-2023-06-27/weights2.h5')
+  model.save_weights('../model/tf-2023-06-28/weights.h5')
   
   # Evaluate model
   eval_result = model.evaluate(

@@ -178,7 +178,7 @@ class DeepZoomImageTiler(object):
             # UNCOMMENT TO ONLY TILE IMAGES AT MAGNIFICATION X (X SHOULD BE IN A FLOATING POINT NUMBER RESPRESENTION UPTO ONE DECIMAL PLACE)
 
             # We only want 20x magnification and 5x magnification
-            if (ThisMag != 5.0):
+            if (ThisMag != 20.0):
                 continue
 
             tiledir = os.path.join("%s_files" % self._basename, str(ThisMag))

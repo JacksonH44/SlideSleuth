@@ -2,10 +2,10 @@
 #SBATCH --account=def-sushant
 #SBATCH --cpus-per-task=6
 #SBATCH --mem=12G
-#SBATCH --time=0-04:00
+#SBATCH --time=0-08:00
 #SBATCH --job-name=tile_tcga
-#SBATCH --output=../outputs/SLURM_DEFAULT_OUT/tile_folder-%j.out
-#SBATCH --error=../outputs/SLURM_DEFAULT_OUT/tile_folder-%j.err
+#SBATCH --output=../outputs/SLURM_DEFAULT_OUT/tile_tcga-%j.out
+#SBATCH --error=../outputs/SLURM_DEFAULT_OUT/tile_tcga-%j.err
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=j2howe@uwaterloo.ca
 
@@ -19,9 +19,9 @@ source $ENVDIR/bin/activate
 pip install --no-index openslide-python
 
 input_folder="/scratch/jhowe4/inputs/GDC/paad_example"
-train_folder="/scratch/jhowe4/outputs/GDC/paad_example/train"
-valid_folder="/scratch/jhowe4/outputs/GDC/paad_example/valid"
-test_folder="/scratch/jhowe4/outputs/GDC/paad_example/test"
+train_folder="/scratch/jhowe4/outputs/GDC/paad_example_20x/train"
+valid_folder="/scratch/jhowe4/outputs/GDC/paad_example_20x/valid"
+test_folder="/scratch/jhowe4/outputs/GDC/paad_example_20x/test"
 
 mkdir -p $train_folder
 mkdir -p $valid_folder

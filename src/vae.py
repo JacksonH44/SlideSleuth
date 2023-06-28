@@ -2,6 +2,8 @@
   A simple variational autoencoder (not convolutional) meant to reduce
   dimension of a 1D feature vector as input.
   
+  Note: https://towardsdatascience.com/build-the-right-autoencoder-tune-and-optimize-using-pca-principles-part-ii-24b9cca69bd6 could be interesting for optimizations
+  
   Author: Jackson Howe
   Date Created: June 20, 2023
   Last Updated: June 27, 2023
@@ -42,8 +44,8 @@ def load_csv_files(directory):
   data = []
   
   # Concatenate into a list of numpy arrays
-  for i in range(10):
-    df = pd.read_csv(all_files[i], header=None)
+  for file in all_files:
+    df = pd.read_csv(file, header=None)
     data.append(df.values)
     
   return np.concatenate(data, axis=0)
@@ -165,6 +167,6 @@ if __name__ == '__main__':
   vae.fit(
     training_data,
     training_data,
-    epochs=10,
+    epochs=5,
     batch_size=32
   )
