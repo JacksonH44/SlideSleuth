@@ -11,8 +11,9 @@ import tensorflow as tf
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.applications.resnet50 import preprocess_input
 import pandas as pd
+import numpy as np
 from os import listdir, makedirs, remove
-from os.path import join, isdir, exists
+from os.path import join, isdir, exists, dirname
 from shutil import move, rmtree
 from PIL import Image
 from PIL import ImageFile
@@ -22,6 +23,7 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 # tf.compat.v1.disable_eager_execution()
 
 LABEL = '/scratch/jhowe4/outputs/GDC/paad_example2/labels.csv'
+ERR_FILE = '/scratch/jhowe4/outputs/GDC/paad_example2/corrupt_images_log.txt'
     
 def organize_dir(dir_path):
   """the result of tile_[type].sh is the following directory structure:
@@ -110,14 +112,23 @@ def clean_datasets(dir_path):
         img = Image.open(join(dir_path, label, img_file))
       except PIL.UnidentifiedImageError:
         remove(join(dir_path, label, img_file))
-        print(f"Removed file {join(dir_path, label, img_file)}")
-      
+        with open(ERR_FILE, 'a') as err_file:
+          err_file.write(f"Removed fie {join(dir_path, label, img_file)} because it was unreadable")
+          
+def extract_labels(ds):
+  labels = []
+  num_batches = len(ds)
+  for batch_idx in range(num_batches):
+    _, batch_labels = ds[batch_idx]
+    labels.extend(batch_labels)
+  
+  labels = np.array(labels)
+  return labels 
 
 if __name__ == '__main__':
-  # Clean the datasets of corrupt tiled images
-  # clean_datasets('/scratch/jhowe4/outputs/GDC/paad_example2/train')
-  # clean_datasets('/scratch/jhowe4/outputs/GDC/paad_example2/test')
-  # clean_datasets('/scratch/jhowe4/outputs/GDC/paad_example2/valid')
+  # Make sure the error file is clean
+  if exists(ERR_FILE):
+    remove(ERR_FILE)
 
   # Create data generator
   datagen = ImageDataGenerator(
@@ -177,7 +188,11 @@ if __name__ == '__main__':
   )
   
   # Save the model weights
-  model.save_weights('../model/tf-2023-06-28/weights.h5')
+  weights_path = '/../model/weights/tf-2023-06-30_weights.h5'
+  weights_dir = dirname(weights_path)
+  if not isdir(weights_dir):
+    makedirs(weights_dir)
+  model.save_weights(weights_path)
   
   # Evaluate model
   eval_result = model.evaluate(
@@ -185,3 +200,14 @@ if __name__ == '__main__':
     steps=len(test_ds)
   )
   print("[test loss, test accuracy]:", eval_result)
+  
+  y_pred = model.predict(test_ds)
+  y_true = extract_labels(test_ds)
+  
+  print(f"Predicted labels: {len(y_pred)}")
+  for label in y_pred:
+    print(label)
+    
+  print(f"True labels: {len(y_true)}")
+  for label in y_true:
+    print(label)

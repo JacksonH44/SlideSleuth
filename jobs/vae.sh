@@ -3,7 +3,7 @@
 #SBATCH --cpus-per-task=6
 #SBATCH --gres=gpu:1
 #SBATCH --mem=20G
-#SBATCH --time=0-02:00
+#SBATCH --time=0-00:30
 #SBATCH --job-name=vae
 #SBATCH --output=../outputs/SLURM_DEFAULT_OUT/vae-%j.out
 #SBATCH --error=../outputs/SLURM_DEFAULT_OUT/vae-%j.err

@@ -22,7 +22,13 @@ from tensorflow.keras.applications.resnet50 import preprocess_input
 import keras
 from os import makedirs
 from os.path import isdir, dirname
-from sklearn.metrics import roc_auc_score
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.metrics import roc_curve, auc
+from sklearn.preprocessing import label_binarize
+import os
+
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 # Have to install keras with a subprocess because for some reason I get a 
 # ModuleNotFoundError otherwise (June 27, 2023)
@@ -35,6 +41,7 @@ import keras_tuner as kt
 print(f"keras-tuner version: {kt.__version__}")
 
 tf.compat.v1.disable_eager_execution()
+tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
         
 def model_builder(hp):
   # Build model
@@ -102,7 +109,7 @@ if __name__ == '__main__':
     max_epochs=10,
     factor=3,
     directory='../outputs/hp',
-    project_name='2023-06-28')
+    project_name='2023-06-29')
   
   # Create a callback to stop training early after reaching a certain value for 
   # the validatoin loss
@@ -115,7 +122,7 @@ if __name__ == '__main__':
     steps_per_epoch=4,
     validation_data=valid_ds,
     validation_steps=4,
-    epochs=10
+    epochs=3
   )
   
   # Get the optimal hyperparameters
@@ -129,13 +136,13 @@ if __name__ == '__main__':
   # Build the model
   model = tuner.hypermodel.build(best_hps)
   
-  # Fit the model on a max number of epochs of 50
-  fit_history = model.fit_generator(
+  # Fit the model to a max number of epochs
+  fit_history = model.fit(
     train_ds,
     steps_per_epoch=4,
     validation_data=valid_ds,
     validation_steps=4,
-    epochs=10
+    epochs=3
   )
   
   # Find the optimal number of epochs to train the model with the 
@@ -147,7 +154,7 @@ if __name__ == '__main__':
   hypermodel = tuner.hypermodel.build(best_hps)
   
   # Retrain the model
-  hypermodel.fit(
+  hypermodel_fit_history = hypermodel.fit(
     train_ds,
     steps_per_epoch=4,
     validation_data=valid_ds,
@@ -156,7 +163,7 @@ if __name__ == '__main__':
   )
   
   # Save the model weights
-  weights_file = '../model/tf-2023-06-28/weights.h5'
+  weights_file = '../model/tf-2023-06-29/weights.h5'
   weights_dir = dirname(weights_file)
   
   if not isdir(weights_dir):
@@ -170,3 +177,51 @@ if __name__ == '__main__':
     steps=len(test_ds)
   )
   print("[test loss, test AUC, test accuracy]:", eval_result)
+  
+  # Get predicted probabilities for the positve class
+  y_pred_prob = hypermodel.predict(test_ds)
+  
+  # Get true labels
+  y_true = np.concatenate([test_ds[i][1] for i in range(len(test_ds))])
+  y_true_binary = label_binarize(y_true, classes=[0, 1])
+  
+  # Compute the false positive rate (fpr), true positive rate (tpr), and thresholds
+  fpr, tpr, thresholds = roc_curve(y_true_binary.ravel(), y_pred_prob[:, 1].ravel())
+
+  # Compute the Area Under the Curve (AUC)
+  roc_auc = auc(fpr, tpr)
+
+  # Plot the ROC curve
+  plt.plot(fpr, tpr, color='darkorange', lw=2, label='ROC curve (area = %0.2f)' % roc_auc)
+  plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
+  plt.xlim([0.0, 1.0])
+  plt.ylim([0.0, 1.05])
+  plt.xlabel('False Positive Rate')
+  plt.ylabel('True Positive Rate')
+  plt.title('Receiver Operating Characteristic')
+  plt.legend(loc="lower right")
+  plt.savefig('../roc.pdf')
+  
+  # # Plot accuracy and loss
+  # acc = hypermodel_fit_history.history['accuracy']
+  # val_acc = hypermodel_fit_history.history['val_accuracy']
+  # loss = hypermodel_fit_history.history['loss']
+  # val_loss = hypermodel_fit_history.history['val_loss']
+  
+  # epochs = range(1, len(acc) + 1)
+
+  # plt.figure()
+  # plt.plot(epochs, acc, 'b', label='Training acc')
+  # plt.plot(epochs, val_acc, 'bo', label='Validation acc')
+  # plt.title('Training and validation accuracy')
+  # plt.legend()
+
+  # plt.savefig('../img/accuracy.pdf')
+
+  # plt.figure()
+  # plt.plot(epochs, loss, 'b', label='Training loss')
+  # plt.plot(epochs, val_loss, 'bo', label='Validation loss')
+  # plt.title('Training and validation loss')
+  # plt.legend()
+
+  # plt.savefig('../img/loss.pdf')
