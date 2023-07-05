@@ -10,7 +10,7 @@ BiocManager::install("TCGAbiolinks")
 library(TCGAbiolinks)
 
 query <- GDCquery(
-  project = "TCGA-PAAD", 
+  project = "TCGA-BRCA", 
   data.category = "Biospecimen",
   data.type = "Slide Image",
   experimental.strategy = "Tissue Slide"

@@ -18,6 +18,8 @@ from shutil import move, rmtree
 from PIL import Image
 from PIL import ImageFile
 import PIL
+import matplotlib.pyplot as plt
+from sklearn.metrics import roc_curve
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 # tf.compat.v1.disable_eager_execution()
@@ -125,6 +127,17 @@ def extract_labels(ds):
   labels = np.array(labels)
   return labels 
 
+def plot_roc_curve(y_true, y_pred):
+  """
+  plots the roc curve based off the probabilities
+  """
+    
+  fpr, tpr, thresholds = roc_curve(y_true, y_pred)
+  plt.plot(fpr, tpr)
+  plt.xlabel('False Positive Rate')
+  plt.label('True Positive Rate')
+  plt.savefig('../img/roc.pdf')
+
 if __name__ == '__main__':
   # Make sure the error file is clean
   if exists(ERR_FILE):
@@ -188,7 +201,7 @@ if __name__ == '__main__':
   )
   
   # Save the model weights
-  weights_path = '/../model/weights/tf-2023-06-30_weights.h5'
+  weights_path = '../model/weights/tf-2023-06-30_weights.h5'
   weights_dir = dirname(weights_path)
   if not isdir(weights_dir):
     makedirs(weights_dir)
@@ -205,9 +218,6 @@ if __name__ == '__main__':
   y_true = extract_labels(test_ds)
   
   print(f"Predicted labels: {len(y_pred)}")
-  for label in y_pred:
-    print(label)
-    
   print(f"True labels: {len(y_true)}")
-  for label in y_true:
-    print(label)
+    
+  plot_roc_curve(y_true, y_pred)

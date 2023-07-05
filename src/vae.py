@@ -6,54 +6,21 @@
   
   Author: Jackson Howe
   Date Created: June 20, 2023
-  Last Updated: June 27, 2023
+  Last Updated: July 5, 2023
 '''
 import tensorflow as tf
 import numpy as np
 import pandas as pd
 import tensorflow.keras.backend as K
-from tensorflow.keras.layers import Input, Dense, Lambda, BatchNormalization, Layer, InputSpec
+from tensorflow.keras.layers import Input, Dense, Lambda, BatchNormalization
 from tensorflow.keras.models import Model
-from tensorflow.keras.constraints import Constraint, UnitNorm
-from tensorflow.keras import regularizers, activations, initializers, constraints
+from keras.optimizers import Adam
 from os import listdir
 from os.path import join
 
 tf.compat.v1.disable_eager_execution()
 
-latent_dim = 2 # Dimensionality of the latent space
-
-# https://medium.com/@sahoo.puspanjali58/a-beginners-guide-to-build-stacked-autoencoder-and-tying-weights-with-it-9daee61eab2b
-# Reference: https://towardsdatascience.com/build-the-right-autoencoder-tune-and-optimize-using-pca-principles-part-ii-24b9cca69bd6
-class UncorrelatedFeaturesConstraint (Constraint):
-    
-    def __init__(self, encoding_dim, weightage = 1.0):
-        self.encoding_dim = encoding_dim
-        self.weightage = weightage
-    
-    def get_covariance(self, x):
-        x_centered_list = []
-
-        for i in range(self.encoding_dim):
-            x_centered_list.append(x[:, i] - K.mean(x[:, i]))
-        
-        x_centered = tf.stack(x_centered_list)
-        covariance = K.dot(x_centered, K.transpose(x_centered)) / tf.cast(x_centered.get_shape()[0], tf.float32)
-        
-        return covariance
-            
-    # Constraint penalty
-    def uncorrelated_feature(self, x):
-        if(self.encoding_dim <= 1):
-            return 0.0
-        else:
-            output = K.sum(K.square(
-                self.covariance - tf.math.multiply(self.covariance, K.eye(self.encoding_dim))))
-            return output
-
-    def __call__(self, x):
-        self.covariance = self.get_covariance(x)
-        return self.weightage * self.uncorrelated_feature(x)
+LATENT_SPACE_DIM = 2 # Dimension of the latent space
 
 def load_csv_files(directory):
   """A function that transforms csv files into a numpy array for vae training
@@ -82,179 +49,326 @@ def load_csv_files(directory):
     
   return np.concatenate(data, axis=0)
 
-# Reparameterization trick
-def sampling(args):
-  z_mean, z_log_var = args
-  epsilon = K.random_normal(shape=(K.shape(z_mean)[0], latent_dim), mean=0, stddev=1)
-  return z_mean + K.exp(0.5 * z_log_var) * epsilon
-
-def build_autoencoder_parts(input_dim):
-  """Build the autoencoder architecture and return a compiled model
-
-  Returns:
-      tf.keras.Model: The compiled autoencoder
-  """
-  # Define the input shape of the autoencoder
-  input_shape = (input_dim,)
-  
-  # Define the encoder architecture
-  inputs = Input(shape=input_shape, name="encoder_input")
-  x = Dense(
-    128, 
-    activation='relu',
-    activity_regularizer=UncorrelatedFeaturesConstraint(128, weightage=1.),
-    # kernel_constraint=UnitNorm(axis=1), 
-    name="encoder_1"
-    )(inputs)
-  x = Dense(
-    64, 
-    activation='relu',
-    activity_regularizer=UncorrelatedFeaturesConstraint(64, weightage=1.), 
-    name="encoder_2"
-  )(x)
-  x = BatchNormalization(name="encoder_batch_norm")(x)
-  x = Dense(
-    32, 
-    activation='relu', 
-    activity_regularizer=UncorrelatedFeaturesConstraint(32, weightage=1.),
-    # kernel_constraint=UnitNorm(axis=1),
-    name="encoder_3",
-  )(x)
-  
-  # Define sampling layers
-  z_mean = Dense(latent_dim, name="z_mean")(x)
-  z_log_var = Dense(latent_dim, name="z_log_var")(x)
-  
-  encoder_output = Lambda(sampling, name="bottleneck")([z_mean, z_log_var])
-  
-  # Make encoder
-  encoder = Model(inputs, encoder_output, name="encoder")
-  encoder.summary()
-  
-  # Define the decoder architecture
-  latent_inputs = Input(shape=(latent_dim,), name="decoder_input")
-  x = Dense(
-    32, 
-    activation='relu', 
-    activity_regularizer=UncorrelatedFeaturesConstraint(32, weightage=1.),
-    # kernel_constraint=UnitNorm(axis=1),
-    name='decoder_3',
-  )(latent_inputs)
-  x = BatchNormalization(name="decoder_batch_norm")(x)
-  x = Dense(
-    64, 
-    activation='relu',
-    activity_regularizer=UncorrelatedFeaturesConstraint(32, weightage=1.),
-    # kernel_constraint=UnitNorm(axis=1), 
-    name="decoder_2"
-  )(x)
-  x = Dense(
-    128, 
-    activation='relu',
-    activity_regularizer=UncorrelatedFeaturesConstraint(32, weightage=1.),
-    # kernel_constraint=UnitNorm(axis=1), 
-    name="decoder_1"
-  )(x)
-  decoder_outputs = Dense(input_dim, activation='sigmoid')(x)
-  
-  # Make decoder
-  decoder = Model(latent_inputs, decoder_outputs, name="decoder")
-  decoder.summary()
-  
-  return encoder, decoder
-
-# Reference: https://blog.paperspace.com/how-to-build-variational-autoencoder-keras/
-# I think this loss is wrong, try this:
-# https://learnopencv.com/variational-autoencoder-in-tensorflow/
-def loss_func(encoder_mu, encoder_log_variance):
-  """A custom loss function for a variational autoencoder. The loss function 
-  consists of a reconstruction loss, which brings about the efficiency of the 
-  vae, and a kl loss term that makes the latent space regular
+def calculate_reconstruction_loss(y_target, y_predicted):
+  """A function that calculates the reconstruction part of the loss function
 
   Args:
-      encoder_mu (tf.keras.layers.Dense): The mean layer of the encoder
-      encoder_log_variance (tf.keras.layers.Dense): The log variance layer of 
-      the encoder
+      y_target (np.array): An array of values that represents the ground truth 
+      vector
+      y_predicted (np.array): An array of values that represents the predicted 
+      vector
+
+  Returns:
+      Integer: The reconstruction loss value
   """
-  def vae_reconstruction_loss(y_true, y_predict):
-    # Calculate mse, which is the reconstruction term
-    reconstruction_loss_factor = 1000
-    reconstruction_loss = K.mean(K.square(y_true-y_predict), axis=[1])
-    return reconstruction_loss_factor * reconstruction_loss
+  error = y_target - y_predicted
+  reconstruction_loss = K.mean(K.square(error))
+  return reconstruction_loss
 
-  def vae_kl_loss(encoder_mu, encoder_log_variance):
-    # regularisation term, the KL-divergence between the returned distribution 
-    # and a standard Guassian
-    kl_loss = -0.5 * K.sum(1.0 + encoder_log_variance - K.square(encoder_mu) - K.exp(encoder_log_variance), axis=1)
+def calculate_kl_loss(model):
+  """Calculate the Kullback-Leibler divergence part of the loss function.
+
+  Args:
+      model (tf.keras.models.Model): The model you want to compute loss for
+
+  Returns:
+      <tf.Tensor>: A tensor representing the KL loss
+  """
+  # wrap '_calculate_kl_loss' such that it takes the model as an argument,
+  # returns a function which can take arbitrary number of arguments
+  # (for compatibility with 'metrics' and utility in loss function)
+  # and returns the kl loss
+  # Reference: https://stackoverflow.com/questions/73981914/tensorflow-attribute-error-method-object-has-no-attribute-from-serialized
+  def _calculate_kl_loss(*args):
+    # D_KL = 1/2 * \Sigma {1 + log_variance - \mu - \sigma}
+    kl_loss = -0.5 * K.sum(1 + model.log_variance -
+                           K.square(model.mu) - K.exp(model.log_variance), axis=1)
     return kl_loss
+  return _calculate_kl_loss
 
-  def vae_kl_loss_metric(y_true, y_predict):
-    # metric to keep track of
-    kl_loss = -0.5 * K.sum(1.0 + encoder_log_variance - K.square(encoder_mu) - K.exp(encoder_log_variance), axis=1)
-    return kl_loss
+class VAE:
+  """
+    VAE represents a deep variational autoencoder architecture
+  """
+  def __init__(self, input_shape, latent_space_dim):
+    """Constructor
 
-  def vae_loss(y_true, y_predict):
-    # Total VAE loss: reconstruction + regularisation
-    reconstruction_loss = vae_reconstruction_loss(y_true, y_predict)
-    kl_loss = vae_kl_loss(y_true, y_predict)
+    Args:
+        input_shape (Tuple): A tuple representing the shape of the input to the 
+        model
+        latent_space_dim (Integer): The dimension of the bottleneck in the model
+    """
+    self.input_shape = input_shape
+    self.latent_space_dim = latent_space_dim
+    self.reconstruction_loss_weight = 1000
+    
+    self.encoder = None
+    self.decoder = None
+    self.model = None
+    
+    # Private variable
+    self._model_input = None
+    
+    # Build model
+    self._build()
+    
+  def summary(self):
+    """A public method that prints information about the architecture of the 
+    model to the console
+    """
+    self.encoder.summary()
+    self.decoder.summary()
+    self.model.summary()
+    
+  def compile(self, learning_rate=1e-3):
+    """Compile model before use
 
-    loss = reconstruction_loss + kl_loss
-    return loss
+    Args:
+        learning_rate (Integer, optional): The model learning rate. Defaults to 
+        1e-3.
+    """
+    optimizer = Adam(learning_rate=learning_rate)
+    
+    # Standardization + regularisation for the loss function
+    self.model.compile(
+      optimizer=optimizer,
+      loss=self._calculate_combined_loss,
+      metrics=[calculate_reconstruction_loss, calculate_kl_loss(self)]
+    )
+    
+  def _calculate_combined_loss(self, y_target, y_predicted):
+    """Custom VAE loss function consisting of the reconstruction loss and 
+    KL-Divergence
 
-  return vae_loss
+    Args:
+        y_target (np.array): Ground truth data in vector format
+        y_predicted (np.array): Predicted data in vector format
+    """
+    reconstruction_loss = calculate_reconstruction_loss(y_target, y_predicted)
+    kl_loss = calculate_kl_loss(self)()
+    combined_loss = self.reconstruction_loss_weight * reconstruction_loss + kl_loss
+    return combined_loss
+    
+  def _build(self):
+    """Three-step model building
+    """
+    self._build_encoder()
+    self._build_decoder()
+    self._build_vae()
+    
+  def _build_vae(self):
+    """Link together encoder and decoder (encoder is the input to the decoder)
+    """
+    model_input = self._model_input
+    model_output = self.decoder(self.encoder(model_input))
+    self.model = Model(model_input, model_output, name="vae")
+    
+  def _build_decoder(self):
+    """A function that builds the decoder layer by layer
+    """
+    decoder_input = self._add_decoder_input()
+    
+    # Add dense layers
+    dense_layers = self._add_decoder_dense_layers(decoder_input)
+    
+    # Add decoder output classification layer
+    decoder_output = self._add_decoder_output(dense_layers)
+    
+    # Create the decoder
+    self.decoder = Model(
+      decoder_input, 
+      decoder_output, 
+      name="decoder"
+    )
+    
+  def _add_decoder_input(self):
+    """Create an input layer with the latent space dimension
+
+    Returns:
+        tf.keras.layer.Input: The decoder input layer
+    """
+    return Input(shape=self.latent_space_dim, name="decoder_input")
+  
+  def _add_decoder_dense_layers(self, decoder_input):
+    """Add the dense layers that make up the decoder
+
+    Args:
+        decoder_input (tf.keras.layer.Input): The decoder input layer from the 
+        encoder bottleneck
+    """
+    x = decoder_input
+    
+    # First layer of decoder (corresponds to third layer of encoder)
+    x = Dense(
+      32,
+      activation='relu',
+      name='decoder_dense_3'
+    )(x)
+    x = BatchNormalization(
+      name='encoder_batch_norm_3'
+    )(x)
+    
+    # Second layer of decoder (corresponds to second layer of encoder)
+    x = Dense(
+      64,
+      activation='relu',
+      name='decoder_dense_2'
+    )(x)
+    x = BatchNormalization(
+      name='encoder_batch_norm_2'
+    )(x)
+    
+    # Third layer of decoder (corresponds to first layer of encoder)
+    x = Dense(
+      128,
+      activation='relu',
+      name='decoder_dense_1'
+    )(x)
+    x = BatchNormalization(
+      name='encoder_batch_norm_1'
+    )(x)
+    
+    return x
+  
+  def _add_decoder_output(self, dense_layers):
+    """Adds the outer classification layer for the decoder
+
+    Args:
+        dense_layers (tf.keras.layer.Dense): The decoder architecture without the outer classification layer
+    """
+    x = dense_layers
+    
+    # Get the input shape (assuming the shape is [features,])
+    input_dim = self.input_shape[0]
+    x = Dense(input_dim, activation='sigmoid')(x)
+    return x
+    
+  def _build_encoder(self):
+    """A function that builds the encoder part of the VAE layer by layer
+    """
+    # Save the input layer in a variable to use for final model building
+    encoder_input = self._add_encoder_input()
+    self._model_input = encoder_input
+    
+    # Can change/play around with this architecture
+    dense_layers = self._add_encoder_dense_layers(encoder_input)
+    
+    # Add the bottleneck, can change dimension in constructor
+    bottleneck = self._add_bottleneck(dense_layers)
+    
+    # Create the encoder
+    self.encoder = Model(
+      inputs=encoder_input, 
+      outputs=bottleneck, 
+      name="encoder"
+    )
+    
+  def _add_encoder_input(self):
+    """Create an input object with the specified input shape
+
+    Returns:
+        tf.keras.layer.Input: The input layer to the VAE
+    """
+    return Input(shape=self.input_shape, name="encoder_input")
+  
+  def _add_encoder_dense_layers(self, encoder_input):
+    """Add the main body of the VAE using dense layers. Add batch norm layers 
+    to speed up training
+
+    Args:
+        encoder_input (tf.keras.layers.Input): The encoder input
+
+    Returns:
+        tf.keras.layers.Dense: The architecture of the encoder without the 
+        bottleneck
+    """
+    x = encoder_input
+    
+    # First dense layer
+    x = Dense(
+      128,
+      activation='relu',
+      name='encoder_dense_1'
+    )(x)
+    x = BatchNormalization(
+      name='encoder_batch_norm_1'
+    )(x)
+    
+    # Second dense layer
+    x = Dense(
+      64,
+      activation='relu',
+      name='encoder_dense_2'
+    )(x)
+    x = BatchNormalization(
+      name='encoder_batch_norm_2'
+    )(x)
+    
+    # Third dense layer
+    x = Dense(
+      32,
+      activation='relu',
+      name='encoder_dense_3'
+    )(x)
+    x = BatchNormalization(
+      name='encoder_batch_norm_3'
+    )(x)
+    
+    return x
+  
+  def _add_bottleneck(self, dense_layers):
+    """Add a bottleneck with Gaussian sampling (dense layers) to the 
+    architecture.
+    
+    NOTE: We no longer have a sequential model, the architecture branches out into the mean layer and the log variance layer
+
+    Args:
+        dense_layers (tf.keras.layers.Dense): The encoder without the bottleneck
+
+    Returns:
+        tf.keras.layers.Lambda: The encoder layers including the bottleneck 
+        sampling layer
+    """
+    x = dense_layers
+    
+    # Branching the model into mean and log variance layers
+    self.mu = Dense(self.latent_space_dim, name="mu")(x)
+    self.log_variance = Dense(self.latent_space_dim, name="log_variance")(x)
+    
+    # Define the function for the lambda layer
+    def sample_point_normal(args):
+      mu, log_variance = args
+      
+      # Sample a point from the standard normal distribution
+      epsilon = K.random_normal(shape=K.shape(self.mu), mean=0, stddev=1)
+      
+      # The equation for sampling a point is:
+      # z = \mu + Sigma * epislon
+      # where \Sigma = exp((log_variance) / 2)
+      sampled_point = mu + K.exp(log_variance / 2) * epsilon
+      return sampled_point
+    
+    # Connect mean and log variance again by sampling a point from distribution
+    x = Lambda(
+      sample_point_normal,
+      name="encoder_output"
+    )([self.mu, self.log_variance])
+    
+    return x
 
 if __name__ == '__main__':
-  # Build autoencoder
-  input_dim = 2048
-  encoder, decoder = build_autoencoder_parts(input_dim)
-  
-  # Reference for these lines: https://blog.paperspace.com/how-to-build-variational-autoencoder-keras/
-  
-  # Create a later representing the input to the vae
-  vae_input = Input(shape=(input_dim,), name="vae_input")
-  
-  # The vae input layer is then connected to the encoder to encode the input 
-  # and return the latent vector
-  vae_encoder_output = encoder(vae_input)
-  
-  # The output of the encoder is connected to the decoder
-  vae_decoder_output = decoder(vae_encoder_output)
-  
-  # Wrap in a model object
-  vae = Model(vae_input, vae_decoder_output, name="vae")
-  vae.summary()
-  
-  z_mean = encoder.get_layer("z_mean")
-  z_log_var = encoder.get_layer("z_log_var")
-  
-  def vae_loss_metric(y_true, y_pred):
-    # Reconstruction loss
-    reconstruction_loss = K.mean(K.square(y_true - y_pred), axis=-1)
-    
-    # KL divergence
-    kl_loss = -0.5 * K.sum(1.0 + z_log_var - K.square(z_mean) - K.exp(z_log_var), axis=-1)
-    
-    # Sum of reconstruction loss and KL divergence
-    total_loss = reconstruction_loss + kl_loss
-    
-    return K.mean(total_loss)
-  
-  # Compile the VAE
-  vae.compile(
-    optimizer='adam', 
-    loss=loss_func(z_mean, z_log_var)
-  )
-
   # Generate training data from feature vectors
   features_path = '../outputs/HNE_features'
   training_data = load_csv_files(features_path)
   print(f"Training data shape: {training_data.shape}")
   print(f"Length of training data: {len(training_data)}")
-
-  # Fit the autoencoder model to minimize reconstruction loss
-  fit_history = vae.fit(
-    training_data,
-    training_data,
-    epochs=7,
-    batch_size=32
+  
+  input_shape = [training_data.shape[1]]
+  
+  vae = VAE(
+    input_shape,
+    latent_space_dim=LATENT_SPACE_DIM
   )
+  vae.summary()
+  vae.compile()
+  print("...Compiled!")

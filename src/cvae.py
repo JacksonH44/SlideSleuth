@@ -36,7 +36,7 @@ def calculate_reconstruction_loss(y_target, y_predicted):
 '''
 def calculate_kl_loss(model):
   # wrap '_calculate_kl_loss' such that it takes the model as an argument,
-  # returnsa function which can take arbitrary number of arguments
+  # returns a function which can take arbitrary number of arguments
   # (for compatibility with 'metrics' and utility in loss function)
   # and returns the kl loss
   # Reference: https://stackoverflow.com/questions/73981914/tensorflow-attribute-error-method-object-has-no-attribute-from-serialized
