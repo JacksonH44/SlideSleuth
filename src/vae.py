@@ -17,10 +17,17 @@ from tensorflow.keras.models import Model
 from keras.optimizers import Adam
 from os import listdir
 from os.path import join
+import os
+import pickle
 
 tf.compat.v1.disable_eager_execution()
 
 LATENT_SPACE_DIM = 2 # Dimension of the latent space
+TRAIN_DIR = '../outputs/HNE_features/train'
+TEST_DIR = '../outputs/HNE_features/test'
+
+BATCH_SIZE = 256
+NUM_EPOCHS = 20
 
 def load_csv_files(directory):
   """A function that transforms csv files into a numpy array for vae training
@@ -135,6 +142,104 @@ class VAE:
       loss=self._calculate_combined_loss,
       metrics=[calculate_reconstruction_loss, calculate_kl_loss(self)]
     )
+    
+  def save(self, save_folder="."):
+    """Save the weights of a model
+
+    Args:
+        save_folder (str, optional): The path to the folder in which the model 
+        weights will be saved. Defaults to the current working directory.
+    """
+    self._create_folder(save_folder)
+    self._save_weights(save_folder)
+    self._save_parameters(save_folder)
+    
+  def train(self, X_train, batch_size, num_epochs):
+    """A function that trains the model
+
+    Args:
+        X_train (np.array): The training set for the model
+        batch_size (Integer): Batch size
+        num_epochs (Integer): Number of full training epochs
+    """
+    # Create an early stopping callback based on reconstruction loss
+    # early_stopping = tf.keras.callbacks.EarlyStopping(
+    #   monitor=TODO: Find what to monitor!!,
+    #   verbose=1,
+    #   patience=10,
+    #   mode='max',
+    #   restore_best_weights=True
+    # )
+      
+    # Fit the model
+    self.model.fit(
+      X_train,
+      X_train, 
+      batch_size=batch_size,
+      epochs=num_epochs,
+      # callbacks=[early_stopping],
+      verbose=1 
+    )
+    
+  def load_weights(self, weights_path):
+    """Load trained weights from a model
+
+    Args:
+        weights_path (str): Path to the model weights
+    """
+    self.model.load_weights(weights_path)
+    
+  @classmethod
+  def load(cls, save_folder="."):
+    """A method that loads weights for a variational autoencoder
+
+    Args:
+        save_folder (str, optional): The path to the folder to load weights 
+        from. Defaults to current working directory.
+    """
+    parameters_path = os.path.join(save_folder, "parameters.pkl")
+    weights_path = os.path.join(save_folder, "weights.h5")
+    with open(parameters_path, "rb") as f:
+      parameters = pickle.load(f)
+    
+    # Build the VAE from the parameters
+    vae = VAE(*parameters)
+    vae.load_weights(weights_path)
+    return vae
+    
+  def _create_folder(self, folder):
+    """Create a folder if it doesn't exist
+
+    Args:
+        folder (String): Path to the folder
+    """
+    if not os.path.exists(folder):
+      os.makedirs(folder)
+      
+  def save_weights(self, folder):
+    """Save trained weights of a model
+
+    Args:
+        folder (str): Path to folder to save weights to
+    """
+    save_path = os.path.join(folder, "weights.h5")
+    self.model.save_weights(save_path)
+    
+  def _save_parameters(self, folder):
+    """Save parameters for a model
+
+    Args:
+        folder (str): Path to parameter folder
+    """
+    parameters = [
+      self.input_shape,
+      LATENT_SPACE_DIM
+    ]
+    
+    # Dump into a pickle file
+    save_path = os.path.join(folder, "parameters.pkl")
+    with open(save_path, "wb") as f:
+      pickle.dump(parameters, f)
     
   def _calculate_combined_loss(self, y_target, y_predicted):
     """Custom VAE loss function consisting of the reconstruction loss and 
@@ -358,13 +463,12 @@ class VAE:
 
 if __name__ == '__main__':
   # Generate training data from feature vectors
-  features_path = '../outputs/HNE_features'
-  training_data = load_csv_files(features_path)
-  print(f"Training data shape: {training_data.shape}")
-  print(f"Length of training data: {len(training_data)}")
+  train_data = load_csv_files(TRAIN_DIR)
+  test_data = load_csv_files(TEST_DIR)
   
-  input_shape = [training_data.shape[1]]
+  input_shape = [train_data.shape[1]]
   
+  # Build the vae
   vae = VAE(
     input_shape,
     latent_space_dim=LATENT_SPACE_DIM
@@ -372,3 +476,10 @@ if __name__ == '__main__':
   vae.summary()
   vae.compile()
   print("...Compiled!")
+  
+  # Fit the model
+  vae.train(
+    X_train=train_data,
+    batch_size=BATCH_SIZE,
+    num_epochs=NUM_EPOCHS
+  )

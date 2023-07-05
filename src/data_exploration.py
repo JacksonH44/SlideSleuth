@@ -9,11 +9,11 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import seaborn as sns
 
 import sklearn
 from sklearn.metrics import confusion_matrix
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
 from PIL import ImageFile
 import math
 
@@ -93,14 +93,31 @@ def plot_metrics(history):
     plt.savefig('../img/plot_metrics.pdf')
     plt.close()
     
+def plot_cm(labels, predictions, p=0.5):
+  cm = confusion_matrix(labels, predictions > p)
+  plt.figure(figsize=(5,5))
+  sns.heatmap(cm, annot=True, fmt='d')
+  plt.title('Confusion matrix @{:.2f}'.format(p))
+  plt.ylabel('Actual label')
+  plt.xlabel('Predicted label')
+  
+  print(f'True negatives: {cm[0][0]}')
+  print(f'False positives: {cm[0][1]}')
+  print(f'False negatives: {cm[1][0]}')
+  print(f'True positives: {cm[1][1]}')
+  print(f'Total observations: {np.sum(cm[1])}')
+  
+  plt.savefig('../img/confusion_matrix.pdf')
+  plt.close()
+    
 def plot_roc(name, labels, predictions, **kwargs):
   fp, tp, _ = sklearn.metrics.roc_curve(labels, predictions)
   
   plt.plot(100*fp, 100*tp, label=name, linewidth=2, **kwargs)
   plt.xlabel('False positives [%]')
   plt.ylabel('True positives [%]')
-  plt.xlim([-0.5, 20])
-  plt.ylim([80, 100.5])
+  plt.xlim([-0.5, 25])
+  plt.ylim([20, 100.5])
   plt.grid(True)
   ax = plt.gca()
   ax.set_aspect('equal')
@@ -182,9 +199,11 @@ weighted_model.load_weights(initial_weights)
 weighted_history = weighted_model.fit(
   train_ds,
   batch_size=BATCH_SIZE,
+  steps_per_epoch=STEPS_PER_EPOCH,
   epochs=EPOCHS,
   callbacks=[early_stopping],
   validation_data=valid_ds,
+  validation_steps=VALIDATION_STEPS,
   class_weight=class_weight
 )
 
@@ -204,6 +223,10 @@ test_predictions_baseline = weighted_model.predict(
 train_labels = extract_labels(train_ds)
 test_labels = extract_labels(test_ds)
 
+# Plot confusion matrix
+plot_cm(test_labels, test_predictions_baseline)
+
+# Plot area under the curve
 plot_roc(
   "train_baseline", 
   train_labels, 

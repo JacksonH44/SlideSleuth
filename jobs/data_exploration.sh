@@ -20,6 +20,7 @@ source $ENVDIR/bin/activate
 pip install --no-index tensorflow
 pip install --no-index pillow
 pip install --no-index scikit-learn
+pip install --no-index seaborn
 python ../src/data_exploration.py
 deactivate
 rm -rf $ENVDIR
