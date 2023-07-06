@@ -4,7 +4,7 @@
 #' Last Updated: June 12, 2023
 #' Author: Alex Turco
 
-setwd("/scratch/jhowe4/inputs")
+setwd("/scratch/jhowe4/inputs/gdc_test")
 BiocManager::install("TCGAbiolinks")
 
 library(TCGAbiolinks)
