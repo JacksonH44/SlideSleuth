@@ -11,6 +11,7 @@
 import tensorflow as tf
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 import tensorflow.keras.backend as K
 from tensorflow.keras.layers import Input, Dense, Lambda, BatchNormalization
 from tensorflow.keras.models import Model
@@ -163,23 +164,25 @@ class VAE:
         num_epochs (Integer): Number of full training epochs
     """
     # Create an early stopping callback based on reconstruction loss
-    # early_stopping = tf.keras.callbacks.EarlyStopping(
-    #   monitor=TODO: Find what to monitor!!,
-    #   verbose=1,
-    #   patience=10,
-    #   mode='max',
-    #   restore_best_weights=True
-    # )
+    early_stopping = tf.keras.callbacks.EarlyStopping(
+      monitor='calculate_reconstruction_loss',
+      verbose=1,
+      patience=10,
+      mode='min',
+      restore_best_weights=True
+    )
       
     # Fit the model
-    self.model.fit(
+    history = self.model.fit(
       X_train,
       X_train, 
       batch_size=batch_size,
       epochs=num_epochs,
-      # callbacks=[early_stopping],
+      callbacks=[early_stopping],
       verbose=1 
     )
+    
+    return history
     
   def load_weights(self, weights_path):
     """Load trained weights from a model
@@ -478,7 +481,7 @@ if __name__ == '__main__':
   print("...Compiled!")
   
   # Fit the model
-  vae.train(
+  history = vae.train(
     X_train=train_data,
     batch_size=BATCH_SIZE,
     num_epochs=NUM_EPOCHS
