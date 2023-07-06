@@ -2,7 +2,7 @@
   A program that calls deepzoom_tile.py on each image in a data set.
 
   Usage: python tile_folder.py opts /path/to/source
-  Example: python tile_folder.py -s 229 -e 0 -j 32 -B 50 --output=/path/to/output ~/projects/def-sushant/jhowe4/DeepTumour/inputs/HNE
+  Example: python tile_folder.py -s 229 -e 0 -j 32 -B 50 --output=/path/to/output ~/projects/def-sushant/jhowe4/TissueTango/inputs/HNE
 
   Author: Jackson Howe
   Last Updated: June 1, 2023

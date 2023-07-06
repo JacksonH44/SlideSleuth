@@ -1,6 +1,5 @@
 #!/bin/bash
 #SBATCH --account=def-sushant
-#SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=6
 #SBATCH --time=0-01:00:00
 #SBATCH --mem=12G

@@ -24,8 +24,8 @@ from sklearn.metrics import roc_curve
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 # tf.compat.v1.disable_eager_execution()
 
-LABEL = '/scratch/jhowe4/outputs/GDC/paad_example2/labels.csv'
-ERR_FILE = '/scratch/jhowe4/outputs/GDC/paad_example2/corrupt_images_log.txt'
+LABEL = '/scratch/jhowe4/outputs/GDC/paad_example_10x/labels.csv'
+ERR_FILE = '/scratch/jhowe4/outputs/GDC/paad_example_10x/corrupt_images_log.txt'
     
 def organize_dir(dir_path):
   """the result of tile_[type].sh is the following directory structure:
@@ -111,7 +111,7 @@ def clean_datasets(dir_path):
   for label in listdir(dir_path):
     for img_file in listdir(join(dir_path, label)):
       try:
-        img = Image.open(join(dir_path, label, img_file))
+        _ = Image.open(join(dir_path, label, img_file))
       except PIL.UnidentifiedImageError:
         remove(join(dir_path, label, img_file))
         with open(ERR_FILE, 'a') as err_file:
@@ -132,7 +132,7 @@ def plot_roc_curve(y_true, y_pred):
   plots the roc curve based off the probabilities
   """
     
-  fpr, tpr, thresholds = roc_curve(y_true, y_pred)
+  fpr, tpr, _ = roc_curve(y_true, y_pred)
   plt.plot(fpr, tpr)
   plt.xlabel('False Positive Rate')
   plt.label('True Positive Rate')
@@ -142,6 +142,16 @@ if __name__ == '__main__':
   # Make sure the error file is clean
   if exists(ERR_FILE):
     remove(ERR_FILE)
+    
+  dir_path = '/scratch/jhowe4/outputs/GDC/paad_example_10x'
+  
+  # Organize the data directory
+  organize_dir(dir_path)
+  
+  # Clean each of its subfolders
+  clean_datasets(join(dir_path, 'train'))
+  clean_datasets(join(dir_path, 'test'))
+  clean_datasets(join(dir_path, 'valid'))
 
   # Create data generator
   datagen = ImageDataGenerator(
@@ -173,51 +183,51 @@ if __name__ == '__main__':
     batch_size=32
   )
   
-  # Build model
-  model = tf.keras.Sequential()
+  # # Build model
+  # model = tf.keras.Sequential()
 
-  # Transfer learning
-  model.add(tf.keras.applications.ResNet50(include_top = False, pooling = 'avg', weights ='imagenet'))
+  # # Transfer learning
+  # model.add(tf.keras.applications.ResNet50(include_top = False, pooling = 'avg', weights ='imagenet'))
   
-  # 2nd layer as Dense for 2-class classification
-  model.add(tf.keras.layers.Dense(2, activation = 'sigmoid'))
+  # # 2nd layer as Dense for 2-class classification
+  # model.add(tf.keras.layers.Dense(2, activation = 'sigmoid'))
   
-  # Not training the resnet on the new data set. Using the pre-trained weigths
-  model.layers[0].trainable = False  
+  # # Not training the resnet on the new data set. Using the pre-trained weigths
+  # model.layers[0].trainable = False  
   
-  # compile the model
-  model.compile(
-    optimizer = 'adam', 
-    loss = 'binary_crossentropy', 
-    metrics = [tf.keras.metrics.AUC()])
+  # # compile the model
+  # model.compile(
+  #   optimizer = 'adam', 
+  #   loss = 'binary_crossentropy', 
+  #   metrics = [tf.keras.metrics.AUC()])
   
-  # Fit the model
-  fit_history = model.fit(
-    train_ds,
-    steps_per_epoch=4,
-    validation_data=valid_ds,
-    validation_steps=4,
-    epochs=3,
-  )
+  # # Fit the model
+  # fit_history = model.fit(
+  #   train_ds,
+  #   steps_per_epoch=4,
+  #   validation_data=valid_ds,
+  #   validation_steps=4,
+  #   epochs=3,
+  # )
   
-  # Save the model weights
-  weights_path = '../model/weights/tf-2023-06-30_weights.h5'
-  weights_dir = dirname(weights_path)
-  if not isdir(weights_dir):
-    makedirs(weights_dir)
-  model.save_weights(weights_path)
+  # # Save the model weights
+  # weights_path = '../model/weights/tf-2023-06-30_weights.h5'
+  # weights_dir = dirname(weights_path)
+  # if not isdir(weights_dir):
+  #   makedirs(weights_dir)
+  # model.save_weights(weights_path)
   
-  # Evaluate model
-  eval_result = model.evaluate(
-    test_ds,
-    steps=len(test_ds)
-  )
-  print("[test loss, test accuracy]:", eval_result)
+  # # Evaluate model
+  # eval_result = model.evaluate(
+  #   test_ds,
+  #   steps=len(test_ds)
+  # )
+  # print("[test loss, test accuracy]:", eval_result)
   
-  y_pred = model.predict(test_ds)
-  y_true = extract_labels(test_ds)
+  # y_pred = model.predict(test_ds)
+  # y_true = extract_labels(test_ds)
   
-  print(f"Predicted labels: {len(y_pred)}")
-  print(f"True labels: {len(y_true)}")
+  # print(f"Predicted labels: {len(y_pred)}")
+  # print(f"True labels: {len(y_true)}")
     
-  plot_roc_curve(y_true, y_pred)
+  # plot_roc_curve(y_true, y_pred)

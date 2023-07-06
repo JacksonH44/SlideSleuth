@@ -27,7 +27,7 @@ TRAIN_DIR = '../outputs/HNE_features/train'
 TEST_DIR = '../outputs/HNE_features/test'
 
 BATCH_SIZE = 256
-NUM_EPOCHS = 20
+NUM_EPOCHS = 10
 
 def load_csv_files(directory):
   """A function that transforms csv files into a numpy array for vae training
@@ -216,7 +216,7 @@ class VAE:
     if not os.path.exists(folder):
       os.makedirs(folder)
       
-  def save_weights(self, folder):
+  def _save_weights(self, folder):
     """Save trained weights of a model
 
     Args:
@@ -315,7 +315,7 @@ class VAE:
     
     # Second layer of decoder (corresponds to second layer of encoder)
     x = Dense(
-      64,
+      256,
       activation='relu',
       name='decoder_dense_2'
     )(x)
@@ -325,7 +325,7 @@ class VAE:
     
     # Third layer of decoder (corresponds to first layer of encoder)
     x = Dense(
-      128,
+      1024,
       activation='relu',
       name='decoder_dense_1'
     )(x)
@@ -391,7 +391,7 @@ class VAE:
     
     # First dense layer
     x = Dense(
-      128,
+      1024,
       activation='relu',
       name='encoder_dense_1'
     )(x)
@@ -401,7 +401,7 @@ class VAE:
     
     # Second dense layer
     x = Dense(
-      64,
+      512,
       activation='relu',
       name='encoder_dense_2'
     )(x)
@@ -483,3 +483,5 @@ if __name__ == '__main__':
     batch_size=BATCH_SIZE,
     num_epochs=NUM_EPOCHS
   )
+  
+  vae.save('../model/vae-2023-07-06')
