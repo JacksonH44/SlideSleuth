@@ -128,14 +128,16 @@ class VAE:
     self.decoder.summary()
     self.model.summary()
     
-  def compile(self, learning_rate=1e-3):
+  def compile(self, learning_rate=1e-4):
     """Compile model before use
 
     Args:
         learning_rate (Integer, optional): The model learning rate. Defaults to 
         1e-3.
     """
-    optimizer = Adam(learning_rate=learning_rate)
+    optimizer = Adam(
+      learning_rate=learning_rate,
+      clipvalue=1.0)
     
     # Standardization + regularisation for the loss function
     self.model.compile(
@@ -155,7 +157,7 @@ class VAE:
     self._save_weights(save_folder)
     self._save_parameters(save_folder)
     
-  def train(self, X_train, batch_size, num_epochs):
+  def train(self, X_train, batch_size, num_epochs, validation_data):
     """A function that trains the model
 
     Args:
@@ -165,7 +167,7 @@ class VAE:
     """
     # Create an early stopping callback based on reconstruction loss
     early_stopping = tf.keras.callbacks.EarlyStopping(
-      monitor='calculate_reconstruction_loss',
+      monitor='val_calculate_reconstruction_loss',
       verbose=1,
       patience=10,
       mode='min',
@@ -179,6 +181,7 @@ class VAE:
       batch_size=batch_size,
       epochs=num_epochs,
       callbacks=[early_stopping],
+      validation_data=(validation_data, validation_data),
       verbose=1 
     )
     
@@ -236,7 +239,7 @@ class VAE:
     """
     parameters = [
       self.input_shape,
-      LATENT_SPACE_DIM
+      self.latent_space_dim
     ]
     
     # Dump into a pickle file

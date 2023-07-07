@@ -1,19 +1,8 @@
 from vae import VAE
 from vae import load_csv_files
-import tensorflow as tf
-import numpy as np
-import pandas as pd
 import matplotlib.pyplot as plt
-import tensorflow.keras.backend as K
-from tensorflow.keras.layers import Input, Dense, Lambda, BatchNormalization
-from tensorflow.keras.models import Model
-from keras.optimizers import Adam
-from os import listdir
-from os.path import join
-import os
-import pickle
 
-LATENT_SPACE_DIM = 2
+LATENT_SPACE_DIM = 10
 TRAIN_DIR = '../outputs/HNE_features/train'
 TEST_DIR = '../outputs/HNE_features/test'
 
@@ -32,10 +21,18 @@ def plot_loss(history, metric):
     color='deepskyblue', 
     label = f'Train {metric}'
   )
+  plt.plot(
+    history.epoch,
+    history.history[f'val_{metric}'],
+    color='deepskyblue',
+    label=f'Valid {metric}',
+    linestyle='--'
+  )
   plt.xlabel('Epoch')
   plt.ylabel('Loss')
-  plt.title(f'Training {metric}')
+  plt.title(f'{metric}')
   plt.savefig(f'../img/vae_{metric}')
+  plt.legend()
   plt.close()
   
 if __name__ == '__main__':
@@ -58,7 +55,8 @@ if __name__ == '__main__':
   history = vae.train(
     X_train=train_data,
     batch_size=BATCH_SIZE,
-    num_epochs=NUM_EPOCHS
+    num_epochs=NUM_EPOCHS,
+    validation_data=test_data
   )
   
   # Plot the loss
