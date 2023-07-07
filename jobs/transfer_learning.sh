@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH --account=def-sushant
 #SBATCH --cpus-per-task=6
-#SBATCH --time=0-01:00:00
-#SBATCH --mem=12G
+#SBATCH --time=0-10:00:00
+#SBATCH --mem=32G
 #SBATCH --job-name=transfer_learning
 #SBATCH --output=../outputs/SLURM_DEFAULT_OUT/transfer_learning-%j.out
 #SBATCH --error=../outputs/SLURM_DEFAULT_OUT/transfer_learning-%j.err
@@ -18,6 +18,7 @@ module load scipy-stack
 source $ENVDIR/bin/activate
 pip install --no-index tensorflow
 pip install --no-index pillow
+pip install -q -U --no-index scikit-learn
 python ../src/transfer_learning.py
 deactivate
 rm -rf $ENVDIR

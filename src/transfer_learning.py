@@ -13,7 +13,7 @@ from tensorflow.keras.applications.resnet50 import preprocess_input
 import pandas as pd
 import numpy as np
 from os import listdir, makedirs, remove
-from os.path import join, isdir, exists, dirname
+from os.path import join, isdir, exists
 from shutil import move, rmtree
 from PIL import Image
 from PIL import ImageFile
@@ -24,8 +24,8 @@ from sklearn.metrics import roc_curve
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 # tf.compat.v1.disable_eager_execution()
 
-LABEL = '/scratch/jhowe4/outputs/GDC/paad_example_10x/labels.csv'
-ERR_FILE = '/scratch/jhowe4/outputs/GDC/paad_example_10x/corrupt_images_log.txt'
+LABEL = '/scratch/jhowe4/outputs/GDC/brca_example_10x/labels.csv'
+ERR_FILE = '/scratch/jhowe4/outputs/GDC/brca_example_10x/corrupt_images_log.txt'
     
 def organize_dir(dir_path):
   """the result of tile_[type].sh is the following directory structure:
@@ -44,16 +44,21 @@ def organize_dir(dir_path):
       test/
       valid/
       
-      This function changes the directory structure to:
+      This function changes the directory structure from:
       root/
-        train/
-          [case_1]-[img_1]
+        [case_1]_files/
+          5.0/
+            [img_1]
+            ...
+            [img_m]
+        [case_n]_files/
           ...
-          [case_n]-[img_m]
-        valid/
-          ...
-        test/
-          ...
+      
+      to:
+      root/
+        [case_1]-[img_1]
+        ...
+        [case_n]-[img_m]
 
   Args:
       dir_path (String): Path to the root folder of the dataset directory
@@ -77,7 +82,7 @@ def organize_dir(dir_path):
             # Move the file from the deep subdirectory structure outlined above 
             # to either the train, test, or valid folder, identify which WSI it 
             # came from by prepending the name of the WSI before the image name
-            move(join(dir_path, file, mag, img_file), join(dir_path, str(label), f"{file.split('_')[0]}-{img_file}"))
+            move(join(dir_path, file, mag, img_file), join(dir_path, str(label), f"{file.split('_')[0]}-{mag}-{img_file}"))
       except IndexError:
         # TODO: in the TCGA-PAAD dataset, there is one file that when I call 
         # splitData.R to assign it a label, it ends up in the dataframe, but 
@@ -140,18 +145,23 @@ def plot_roc_curve(y_true, y_pred):
 
 if __name__ == '__main__':
   # Make sure the error file is clean
-  if exists(ERR_FILE):
-    remove(ERR_FILE)
+  # if exists(ERR_FILE):
+  #   remove(ERR_FILE)
     
-  dir_path = '/scratch/jhowe4/outputs/GDC/paad_example_10x'
+  dir_path = '/scratch/jhowe4/outputs/GDC/brca_example_10x'
+  train_path = join(dir_path, 'train')
+  test_path = join(dir_path, 'test')
+  valid_path = join(dir_path, 'valid')
   
-  # Organize the data directory
-  organize_dir(dir_path)
+  # # Organize the data directory
+  # organize_dir(train_path)
+  # organize_dir(test_path)
+  # organize_dir(valid_path)
   
-  # Clean each of its subfolders
-  clean_datasets(join(dir_path, 'train'))
-  clean_datasets(join(dir_path, 'test'))
-  clean_datasets(join(dir_path, 'valid'))
+  # # Clean each of its subfolders
+  # clean_datasets(train_path)
+  # clean_datasets(test_path)
+  # clean_datasets(valid_path)
 
   # Create data generator
   datagen = ImageDataGenerator(
@@ -161,25 +171,25 @@ if __name__ == '__main__':
   
   # Training dataset
   train_ds = datagen.flow_from_directory(
-    '/scratch/jhowe4/outputs/GDC/paad_example2/train',
+    train_path,
     target_size=(224, 224),
-    class_mode='categorical',
+    class_mode='binary',
     batch_size=32
   )
   
   # Testing dataset
   test_ds = datagen.flow_from_directory(
-    '/scratch/jhowe4/outputs/GDC/paad_example2/test',
+    test_path,
     target_size=(224, 224),
-    class_mode='categorical',
+    class_mode='binary',
     batch_size=32
   )
   
   # Validation dataset
   valid_ds = datagen.flow_from_directory(
-    '/scratch/jhowe4/outputs/GDC/paad_example2/valid',
+    valid_path,
     target_size=(224, 224),
-    class_mode='categorical',
+    class_mode='binary',
     batch_size=32
   )
   
