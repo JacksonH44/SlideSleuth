@@ -99,11 +99,12 @@ class CVAE:
   '''
   def train(self, x_train, batch_size, num_epochs):
     # Since an autoencoder wants to minimize reconstruction loss, the desired output (second argument) is the training data itself
-    self.model.fit(x_train,
+    history = self.model.fit(x_train,
                    x_train,
                    batch_size=batch_size,
                    epochs=num_epochs,
                    shuffle=True)
+    return history
     
   '''
     Save a vae in the desired folder. If no such folder exists, build the folder
