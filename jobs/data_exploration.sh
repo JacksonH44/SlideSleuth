@@ -2,7 +2,7 @@
 #SBATCH --account=def-sushant
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=6
-#SBATCH --time=0-10:00:00
+#SBATCH --time=0-16:00:00
 #SBATCH --mem=64G
 #SBATCH --job-name=data_exploration
 #SBATCH --output=../outputs/SLURM_DEFAULT_OUT/data_exploration-%j.out
