@@ -11,6 +11,9 @@ From: nvidia/cuda:11.7.1-base-ubuntu20.04
 	apt-get install -y build-essential
 	apt-get install -y vim git wget
 
+	# Install Python dependencies
+	pip install -q -U virtualenv
+
 %environment
 	export LC_ALL=C
 	export LANG=C
