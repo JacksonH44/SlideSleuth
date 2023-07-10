@@ -47,7 +47,7 @@ def calculate_kl_loss(model):
     return kl_loss
   return _calculate_kl_loss
 
-class VAE:
+class CVAE:
   '''
     VAE represents a Deep Convolutional variational autoencoder architecture
   '''
@@ -138,7 +138,7 @@ class VAE:
     weights_path = os.path.join(save_folder, "weights.h5")
     with open(parameters_path, "rb") as f:
       parameters = pickle.load(f)
-    vae = VAE(*parameters)
+    vae = CVAE(*parameters)
     vae.load_weights(weights_path)
     return vae
   
@@ -391,11 +391,10 @@ class VAE:
     return arch
 
 if __name__ == '__main__':
-  vae = VAE(
-    input_shape=[229, 229, 3], 
+  cvae = CVAE(
+    input_shape=[224, 224, 3], 
     conv_filters=[32, 64, 64, 64], 
     conv_kernels=[3, 3, 3, 3], 
     conv_strides=[1, 2, 2, 1], 
-    latent_space_dim=6)
-  vae.summary()
-  print(vae._shape_before_bottleneck)
+    latent_space_dim=2)
+  cvae.summary()

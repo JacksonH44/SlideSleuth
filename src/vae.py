@@ -16,6 +16,7 @@ import tensorflow.keras.backend as K
 from tensorflow.keras.layers import Input, Dense, Lambda, BatchNormalization
 from tensorflow.keras.models import Model
 from keras.optimizers import Adam
+from keras.constraints import Constraint
 from os import listdir
 from os.path import join
 import os
@@ -28,7 +29,38 @@ TRAIN_DIR = '../outputs/HNE_features/train'
 TEST_DIR = '../outputs/HNE_features/test'
 
 BATCH_SIZE = 256
-NUM_EPOCHS = 10
+NUM_EPOCHS = 50
+
+class UncorrelatedFeaturesConstraint (Constraint):
+  """A class from https://towardsdatascience.com/build-the-right-autoencoder-tune-and-optimize-using-pca-principles-part-ii-24b9cca69bd6. For uncorrelated features, impose a penalty on the sum of the off-diagonal elements of the encoded features covariance.
+  """
+  def __init__(self, encoding_dim, weightage = 1.0):
+    self.encoding_dim = encoding_dim
+    self.weightage = weightage
+    
+  def get_covariance(self, x):
+    x_centered_list = []
+
+    for i in range(self.encoding_dim):
+      x_centered_list.append(x[:, i] - K.mean(x[:, i]))
+        
+      x_centered = tf.stack(x_centered_list)
+      covariance = K.dot(x_centered, K.transpose(x_centered)) / tf.cast(x_centered.get_shape()[0], tf.float32)
+        
+      return covariance
+            
+  # Constraint penalty
+  def uncorrelated_feature(self, x):
+    if(self.encoding_dim <= 1):
+      return 0.0
+    else:
+      output = K.sum(K.square(
+          self.covariance - tf.math.multiply(self.covariance, K.eye(self.encoding_dim))))
+      return output
+
+  def __call__(self, x):
+    self.covariance = self.get_covariance(x)
+    return self.weightage * self.uncorrelated_feature(x)
 
 def load_csv_files(directory):
   """A function that transforms csv files into a numpy array for vae training
@@ -315,9 +347,9 @@ class VAE:
       activation='relu',
       name='decoder_dense_3'
     )(x)
-    x = BatchNormalization(
-      name='encoder_batch_norm_3'
-    )(x)
+    # x = BatchNormalization(
+    #   name='encoder_batch_norm_3'
+    # )(x)
     
     # Second layer of decoder (corresponds to second layer of encoder)
     x = Dense(
@@ -325,9 +357,9 @@ class VAE:
       activation='relu',
       name='decoder_dense_2'
     )(x)
-    x = BatchNormalization(
-      name='encoder_batch_norm_2'
-    )(x)
+    # x = BatchNormalization(
+    #   name='encoder_batch_norm_2'
+    # )(x)
     
     # Third layer of decoder (corresponds to first layer of encoder)
     x = Dense(
@@ -335,9 +367,9 @@ class VAE:
       activation='relu',
       name='decoder_dense_1'
     )(x)
-    x = BatchNormalization(
-      name='encoder_batch_norm_1'
-    )(x)
+    # x = BatchNormalization(
+    #   name='encoder_batch_norm_1'
+    # )(x)
     
     return x
   
@@ -401,19 +433,19 @@ class VAE:
       activation='relu',
       name='encoder_dense_1'
     )(x)
-    x = BatchNormalization(
-      name='encoder_batch_norm_1'
-    )(x)
+    # x = BatchNormalization(
+    #   name='encoder_batch_norm_1'
+    # )(x)
     
     # Second dense layer
     x = Dense(
-      512,
+      256,
       activation='relu',
-      name='encoder_dense_2'
+      name='encoder_dense_2',
     )(x)
-    x = BatchNormalization(
-      name='encoder_batch_norm_2'
-    )(x)
+    # x = BatchNormalization(
+    #   name='encoder_batch_norm_2'
+    # )(x)
     
     # Third dense layer
     x = Dense(
@@ -421,9 +453,9 @@ class VAE:
       activation='relu',
       name='encoder_dense_3'
     )(x)
-    x = BatchNormalization(
-      name='encoder_batch_norm_3'
-    )(x)
+    # x = BatchNormalization(
+    #   name='encoder_batch_norm_3'
+    # )(x)
     
     return x
   

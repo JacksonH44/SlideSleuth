@@ -8,7 +8,7 @@
   Last Updated: June 9, 2023
 '''
 
-from autoencoder import VAE
+from cvae import CVAE
 import pickle
 
 LEARNING_RATE = 0.0005
@@ -20,7 +20,7 @@ EPOCHS = 100
 '''
 def train(x_train, learning_rate, batch_size, epochs):
   # YOU must specify the model parameters
-  vae = VAE(
+  vae = CVAE(
       input_shape=(28, 28, 1),
       conv_filters=(32, 64, 64, 64),
       conv_kernels=(3, 3, 3, 3),
