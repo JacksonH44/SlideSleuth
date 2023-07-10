@@ -11,12 +11,8 @@ From: nvidia/cuda:11.7.1-base-ubuntu20.04
 	apt-get install -y build-essential
 	apt-get install -y vim git wget
 
-	# Install python dependencies
-	pip install numpy scipy matplotlib scikit-learn openslide-python tensorflow pillow jupyter ipykernel pandas seaborn
-
 %environment
 	export LC_ALL=C
 	export LANG=C
-	export $PATH=/usr/games:$PATH
 	export DEBIAN_FRONTEND=noninteractive
 	export TZ="America/New_York"
