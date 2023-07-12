@@ -19,4 +19,6 @@ img/
 test/jupyter_py3
 container.sif
 src/.ipynb_checkpoints
+outputs/hptest/requirements.txt
+test/requirements.txt
 outputs/hp
