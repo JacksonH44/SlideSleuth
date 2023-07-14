@@ -9,7 +9,6 @@
 '''
 
 from cvae import CVAE
-from tensorflow.keras.utils import image_dataset_from_directory
 import tensorflow as tf
 import os
 from os.path import join
@@ -33,7 +32,7 @@ def train(X_train, learning_rate, batch_size, epochs, steps_per_epoch, validatio
   """A function that trains a convolutional variational autoencoder
 
   Args:
-      x_train (np.array): Input and output data (since it is an autoencoder)
+      x_train (np.ndarray): Input and output data (since it is an autoencoder)
 
   Returns:
       tf.keras.History: A trained CVAE history
@@ -50,22 +49,30 @@ def train(X_train, learning_rate, batch_size, epochs, steps_per_epoch, validatio
   # Train model
   vae.summary()
   vae.compile(learning_rate)
-  history = vae.train(X_train, batch_size, epochs, validation_data)
+  history = vae.train(
+    X_train, 
+    batch_size, 
+    epochs, 
+    steps_per_epoch, 
+    validation_data, 
+    validation_steps
+  )
   return history
 
 def make_dataset(dir_path, img_size=(IMG_SIZE, IMG_SIZE), shuffle=True):
-  """A function that makes a dataset suitable for the CVAE from a directory 
-  given.
+  """makes the dataset for a directory of images. Assumes the directory has already been cleaned, or else the error: 'InvalidArgumentError: Input is empty.' may pop up
 
-  Args:
-      dir_path (str): The path to the required directory
+  Returns:
+      tf.data.Dataset: a tensorflow dataset object representing all images in the directory
   """
-  return image_dataset_from_directory(
+  
+  datagen = tf.keras.preprocessing.image.ImageDataGenerator()
+  return datagen.flow_from_directory(
     dir_path,
-    labels=None,
-    label_mode=None,
-    batch_size=None,
-    image_size=img_size,
+    target_size=img_size,
+    classes=None,
+    class_mode=None,
+    batch_size=BATCH_SIZE,
     shuffle=shuffle
   )
 
@@ -80,12 +87,12 @@ if __name__ == '__main__':
   train_ds = make_dataset(train_path)
   valid_ds = make_dataset(valid_path)
   
-  history = train(
-    train_ds, 
-    LEARNING_RATE, 
-    BATCH_SIZE, 
-    EPOCHS, 
-    STEPS_PER_EPOCH, 
-    valid_ds, 
-    VALIDATION_STEPS
-  )
+  # history = train(
+  #   train_ds, 
+  #   LEARNING_RATE, 
+  #   BATCH_SIZE, 
+  #   EPOCHS, 
+  #   STEPS_PER_EPOCH, 
+  #   valid_ds, 
+  #   VALIDATION_STEPS
+  # )
