@@ -97,13 +97,30 @@ class CVAE:
   '''
     Training the model
   '''
-  def train(self, x_train, batch_size, num_epochs):
+  def train(self, x_train, batch_size, num_epochs, steps_per_epoch,validation_data, validation_steps):
     # Since an autoencoder wants to minimize reconstruction loss, the desired output (second argument) is the training data itself
-    history = self.model.fit(x_train,
-                   x_train,
-                   batch_size=batch_size,
-                   epochs=num_epochs,
-                   shuffle=True)
+    
+    # Create an early stopping callback based on reconstruction loss
+    early_stopping = tf.keras.callbacks.EarlyStopping(
+      monitor='val_calculate_reconstruction_loss',
+      verbose=1,
+      patience=10,
+      mode='min',
+      restore_best_weights=True
+    )
+    
+    history = self.model.fit(
+      x_train,
+      x_train,
+      batch_size=batch_size,
+      epochs=num_epochs,
+      steps_per_epoch=steps_per_epoch,
+      callbacks=[early_stopping],
+      validation_data=(validation_data, validation_data),
+      validation_steps=validation_steps,
+      shuffle=True
+    )
+    
     return history
     
   '''

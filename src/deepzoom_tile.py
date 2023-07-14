@@ -179,7 +179,7 @@ class DeepZoomImageTiler(object):
 
             # Change magnification to one of your choosing (commonly 5.0, 10.0, 
             # 20.0)
-            if (ThisMag != 10.0):
+            if (ThisMag != 5.0):
                 continue
 
             tiledir = os.path.join("%s_files" % self._basename, str(ThisMag))

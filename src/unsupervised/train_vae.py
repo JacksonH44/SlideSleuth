@@ -2,7 +2,7 @@ from vae import VAE
 from vae import load_csv_files
 import matplotlib.pyplot as plt
 
-LATENT_SPACE_DIM = 2
+LATENT_SPACE_DIM = 32
 TRAIN_DIR = '../outputs/HNE_features/train'
 TEST_DIR = '../outputs/HNE_features/test'
 

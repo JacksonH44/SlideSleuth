@@ -10,7 +10,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-from autoencoder import VAE
+from cvae import CVAE
 import pickle
 
 def select_images(images, labels, num_images=10):
@@ -49,7 +49,7 @@ def plot_images_encoded_in_latent_space(latent_representations, sample_labels):
 if __name__ == "__main__":
   # Load saved autoencoder
   model_path = '../model'
-  vae = VAE.load(model_path)
+  vae = CVAE.load(model_path)
 
   # Load mnist data
   data_path = '../outputs/ae_data.pkl'

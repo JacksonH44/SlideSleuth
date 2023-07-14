@@ -23,8 +23,9 @@ import os
 import pickle
 
 tf.compat.v1.disable_eager_execution()
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
-LATENT_SPACE_DIM = 2 # Dimension of the latent space
+LATENT_SPACE_DIM = 100 # Dimension of the latent space
 TRAIN_DIR = '../outputs/HNE_features/train'
 TEST_DIR = '../outputs/HNE_features/test'
 
@@ -342,13 +343,10 @@ class VAE:
     x = decoder_input
     
     # First layer of decoder (corresponds to third layer of encoder)
-    x = Dense(
-      32,
-      activation='relu',
-      name='decoder_dense_3'
-    )(x)
-    # x = BatchNormalization(
-    #   name='encoder_batch_norm_3'
+    # x = Dense(
+    #   32,
+    #   activation='relu',
+    #   name='decoder_dense_3'
     # )(x)
     
     # Second layer of decoder (corresponds to second layer of encoder)
@@ -357,9 +355,6 @@ class VAE:
       activation='relu',
       name='decoder_dense_2'
     )(x)
-    # x = BatchNormalization(
-    #   name='encoder_batch_norm_2'
-    # )(x)
     
     # Third layer of decoder (corresponds to first layer of encoder)
     x = Dense(
@@ -367,9 +362,6 @@ class VAE:
       activation='relu',
       name='decoder_dense_1'
     )(x)
-    # x = BatchNormalization(
-    #   name='encoder_batch_norm_1'
-    # )(x)
     
     return x
   
@@ -433,9 +425,6 @@ class VAE:
       activation='relu',
       name='encoder_dense_1'
     )(x)
-    # x = BatchNormalization(
-    #   name='encoder_batch_norm_1'
-    # )(x)
     
     # Second dense layer
     x = Dense(
@@ -443,18 +432,12 @@ class VAE:
       activation='relu',
       name='encoder_dense_2',
     )(x)
-    # x = BatchNormalization(
-    #   name='encoder_batch_norm_2'
-    # )(x)
     
-    # Third dense layer
-    x = Dense(
-      32,
-      activation='relu',
-      name='encoder_dense_3'
-    )(x)
-    # x = BatchNormalization(
-    #   name='encoder_batch_norm_3'
+    # # Third dense layer
+    # x = Dense(
+    #   32,
+    #   activation='relu',
+    #   name='encoder_dense_3'
     # )(x)
     
     return x
@@ -515,11 +498,11 @@ if __name__ == '__main__':
   vae.compile()
   print("...Compiled!")
   
-  # Fit the model
-  history = vae.train(
-    X_train=train_data,
-    batch_size=BATCH_SIZE,
-    num_epochs=NUM_EPOCHS
-  )
+  # # Fit the model
+  # history = vae.train(
+  #   X_train=train_data,
+  #   batch_size=BATCH_SIZE,
+  #   num_epochs=NUM_EPOCHS
+  # )
   
-  vae.save('../model/vae-2023-07-06')
+  # vae.save('../model/vae-2023-07-06')

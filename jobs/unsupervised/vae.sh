@@ -18,6 +18,6 @@ source $ENVDIR/bin/activate
 module load scipy-stack
 module load cuda/11.7 cudnn
 pip install -q -U --no-index tensorflow
-python ../src/vae.py
+python ../../src/unsupervised/vae.py
 deactivate
 rm -rf $ENVDIR

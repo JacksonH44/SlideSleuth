@@ -32,16 +32,16 @@ import sys
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 # tf.compat.v1.disable_eager_execution()
 
-LABEL = '/scratch/jhowe4/outputs/GDC/paad_example2/labels.csv'
-ERR_FILE = '/scratch/jhowe4/outputs/GDC/paad_example2/corrupt_images_log.txt'
+LABEL = '/scratch/jhowe4/outputs/GDC/brca_example_10x/labels.csv'
+ERR_FILE = '/scratch/jhowe4/outputs/GDC/brca_example_10x/corrupt_images_log.txt'
 WEIGHTS_PATH = '../model/weights'
 
 EPOCHS = 5
-BATCH_SIZE = 512
-NUM_TRAINING_TILES = 32434
-NUM_POS_TRAINING = 28883
-NUM_NEG_TRAINING = 3551
-NUM_VALID_TILES = 3880
+BATCH_SIZE = 64
+NUM_TRAINING_TILES = 203110
+NUM_POS_TRAINING = 175410
+NUM_NEG_TRAINING = 27700
+NUM_VALID_TILES = 15855
 STEPS_PER_EPOCH = math.ceil(NUM_TRAINING_TILES / BATCH_SIZE)
 VALIDATION_STEPS = math.ceil(NUM_VALID_TILES / BATCH_SIZE)
 
@@ -229,7 +229,7 @@ def make_model(metrics=METRICS, output_bias=None):
   model.layers[0].trainable = False 
     
   model.compile(
-    optimizer=tf.keras.optimizers.Adam(learning_rate=1e-3),
+    optimizer=tf.keras.optimizers.Adam(learning_rate=1e-5),
     loss=tf.keras.losses.BinaryCrossentropy(),
     metrics=metrics
   )
@@ -334,7 +334,7 @@ if __name__ == '__main__':
   if exists(ERR_FILE):
     remove(ERR_FILE)
     
-  dir_path = '/scratch/jhowe4/outputs/GDC/brca_example_10x'
+  dir_path = '/scratch/jhowe4/outputs/GDC/paad_example_2'
   train_path = join(dir_path, 'train')
   test_path = join(dir_path, 'test')
   valid_path = join(dir_path, 'valid')
@@ -450,10 +450,10 @@ if __name__ == '__main__':
     linestyle='--'
   )
   plt.legend(loc='lower right')
-  plt.savefig('../img/small_roc_curve.png')
+  plt.savefig('../img/roc_curve.png')
   plt.close()
   
   # Plot other model metrics
   plot_metrics(history)
-  plt.savefig('../img/small_plot_metrics.pdf')
+  plt.savefig('../img/plot_metrics.pdf')
   plt.close()
