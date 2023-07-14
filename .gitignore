@@ -22,3 +22,4 @@ src/.ipynb_checkpoints
 outputs/hptest/requirements.txt
 test/requirements.txt
 outputs/hp
+notebooks/.ipynb_checkpoints/

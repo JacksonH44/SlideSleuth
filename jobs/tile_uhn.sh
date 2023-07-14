@@ -1,11 +1,11 @@
 #!/bin/bash
 #SBATCH --account=def-sushant
 #SBATCH --cpus-per-task=6
-#SBATCH --mem=12G
-#SBATCH --time=0-04:00
-#SBATCH --job-name=tile_folder
-#SBATCH --output=../outputs/SLURM_DEFAULT_OUT/tile_folder-%j.out
-#SBATCH --error=../outputs/SLURM_DEFAULT_OUT/tile_folder-%j.err
+#SBATCH --mem=65536M
+#SBATCH --time=0-16:00:00
+#SBATCH --job-name=tile_uhn
+#SBATCH --output=../outputs/SLURM_DEFAULT_OUT/tile_uhn-%j.out
+#SBATCH --error=../outputs/SLURM_DEFAULT_OUT/tile_uhn-%j.err
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=j2howe@uwaterloo.ca
 
@@ -19,9 +19,9 @@ source $ENVDIR/bin/activate
 pip install --no-index openslide-python
 
 input_folder="/home/jhowe4/projects/def-sushant/jhowe4/TissueTango/inputs/raw/CK7"
-train_folder="/home/jhowe4/projects/def-sushant/jhowe4/TissueTango/outputs/CK7/train"
-valid_folder="/home/jhowe4/projects/def-sushant/jhowe4/TissueTango/outputs/CK7/valid"
-test_folder="/home/jhowe4/projects/def-sushant/jhowe4/TissueTango/outputs/CK7/test"
+train_folder="/scratch/jhowe4/outputs/uhn/CK7/train"
+valid_folder="/scratch/jhowe4/outputs/uhn/CK7/valid"
+test_folder="/scratch/jhowe4/outputs/uhn/CK7/test"
 
 mkdir -p $train_folder
 mkdir -p $valid_folder
