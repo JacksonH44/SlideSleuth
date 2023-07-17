@@ -1,28 +1,31 @@
-'''
-Description: A file that extracts a feature vector from a test image using transfer learning
+"""Feature extraction pipeline
 
-Author: Jackson Howe
-Data Created: May 25, 2023
-Last Updated: June 15, 2023
-'''
+    Date Created: May 25, 2023
+    Last Updated: June 15, 2023
+"""
 
-# Imports
+__author__ = 'Jackson Howe'
+
+from os.path import exists
+import sys
+
+import PIL
+from PIL import ImageFile
 from tensorflow.keras.applications.resnet50 import ResNet50
 from tensorflow.keras.preprocessing import image
 from tensorflow.keras.applications.resnet50 import preprocess_input
 import numpy as np
-from os.path import exists
-import sys
-import PIL
-from PIL import ImageFile
+
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
-'''
-  A function that instatiates the transfer learning model
-'''
-
 def instantiate():
-  # Extract a feature vector - don't need top classification layer, instead we'll need a pooling layer
+  """Creates a feature extraction model
+
+  Returns:
+      tf.keras.applications.resnet50.ResNet50: ResNet50 feature extraction model
+  """
+  
+  # Extract a feature vector - don't need top classification layer, instead we'll need a pooling layer.
   # NOTE: can change pooling to 'max' if you wish
   # See https://keras.io/api/applications/resnet/ for more (May 23, 2023)
   model = ResNet50(weights='imagenet',
@@ -30,11 +33,8 @@ def instantiate():
                    pooling='avg')
   return model
 
-'''
-  A function that extracts a feature vector from an image using transfer learning.
-'''
-
 def extract_features(model, img_path, output_path):
+  """A function that extracts a feature vector from an image tile"""
 
   # Visit https://www.tensorflow.org/api_docs/python/tf/keras/preprocessing/image for more info
   # about preprocessing library (May 23, 2023)

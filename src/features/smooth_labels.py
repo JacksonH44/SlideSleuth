@@ -1,33 +1,40 @@
-'''
+"""
   A program that takes in the 4 scorers excel files and performs a label smoothing process
   in which the combination of each case is given a continuous value in [0, 1]
 
-  Author: Jackson Howe
   Date Created: June 6, 2023
   Last Updated: June 19, 2023
-'''
+"""
+
+__author__ = "Jackson Howe"
 
 import pandas as pd
 
 # Specify global variable output file
-OUT_FILE = '../outputs/HNE_2/labels.csv'
+OUT_FILE = '../../data/interim'
 
-'''
-  A function that takes in a dataframe representing a case and computes the smoothed label 
-  value.
-'''
 
 def smooth_label(df):
+  """A function that computes the smoothed label value of a case
+
+  Args:
+      df (pd.DataFrame): The data frame representing a case
+
+  Returns:
+      int: The label value of the case
+  """
+  
   totals = df.sum(axis=1)
   totals = totals / 400
   label = (totals.loc['invasive'] * 1) + (totals.loc['probable invasive'] * 0.5) + (totals.loc['probable noninvasive'] * 0.5)
   return label
 
+
 def write_csv(case_names, label_totals):
   """A function that writes labels to a .csv file
 
   Args:
-      case_names (list<string>): names of the cases
+      case_names (list<str>): names of the cases
       label_totals (list<float32>): real-valued labels for the corresponding case
   """
   # Convert the two lists to a dataframe, then write the dataframe to a csv file

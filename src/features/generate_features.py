@@ -1,5 +1,4 @@
-'''
-  A function that generates feature vectors for all image tiles corresponding to each image in a dataset.
+"""A function that generates feature vectors for all image tiles corresponding to each image in a dataset.
 
   Usage: python generate_features.py /path/to/root/of/all/image/tiles /path/to/desired/output/file
   Example: python generate_features.py /scratch/jhowe4/outputs/pipeline_test/2023-06-05/1 ../outputs/tmp_out
@@ -26,26 +25,27 @@
 
   So this program assumes such an output folder when searching for tiled images.
 
-  Author: Jackson Howe
   Date Created: June 1, 2023
   Last Updated: June 2, 2023
-'''
+"""
 
-# imports
+__author__ = "Jackson Howe"
+
 import sys
 from os.path import exists, isdir
 from os import listdir, makedirs
-import extract_features
-from shutil import rmtree
 
-'''
-  A function that takes in a root directory and a destination directory for all image slide tiles and writes
-  each of them to a .csv file. For each whole slide image, one csv file will be created, with each row of the
-  csv file representing a feature vector extracted from a tile of the whole slide image.
-'''
+import extract_features
+
 
 def write_csv(src_dir, dest_dir):
-  # Instantiate the model, take care to do this only once, as it is much faster than through each time in a
+  """Writes each tile in the source directory to a .csv file in an output directory.
+
+  Args:
+      src_dir (str): The name of the source directory
+      dest_dir (str): The name of the target directory
+  """
+  
   model = extract_features.instantiate()
 
   for file in listdir(src_dir):
@@ -65,6 +65,7 @@ def write_csv(src_dir, dest_dir):
         # Extract features from each image tile
         for img_tile in listdir(cur_path):
           extract_features.extract_features(model, f'{cur_path}/{img_tile}', output_folder)
+
 
 if __name__ == '__main__':
   # Verify source directory
