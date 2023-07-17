@@ -1,26 +1,8 @@
-inputs/HNE
-src/__pycache__
-inputs/raw/Aggregated CK7 rescoring.xlsx
-inputs/raw/CK7 study_database_rescoring_final_EY.xlsx
-inputs/raw/CK7 study_database_rescoring_final_MRCv2.xlsx
-inputs/raw/CK7 study_database_rescoring_final-Najd.xlsx
-inputs/raw/CK7 study_database_rescoring_final_TSAOv2.xlsx
-inputs/raw/Combined CK7 rescoring.xlsx
-inputs/raw
-outputs/SLURM_DEFAULT_OUT
-outputs/ae_data.pkl
-outputs/corruptions.txt
-outputs/CK7
-model/
-outputs/HNE
-outputs/HNE_2
-outputs/HNE_features
-img/
-test/jupyter_py3
+SLURM_DEFAULT_OUT
+data/external
+data/interim
+data/processed
+data/raw
+models/weights
+reports/figures
 container.sif
-src/.ipynb_checkpoints
-outputs/hptest/requirements.txt
-test/requirements.txt
-outputs/hp
-notebooks/.ipynb_checkpoints/
-outputs/labels.csv

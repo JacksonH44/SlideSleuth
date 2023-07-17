@@ -6,10 +6,10 @@
 #' Author: Jackson Howe
  
 prevDir <- getwd()
-setwd("/scratch/jhowe4/inputs/GDC/brca_example")
+setwd("/scratch/jhowe4/inputs/GDC/paad_example")
 BiocManager::install("TCGAbiolinks")
 
-outPath <- "/scratch/jhowe4/outputs/GDC/brca_example_10x/labels.csv"
+outPath <- "/scratch/jhowe4/outputs/GDC/paad_example_5x/labels.csv"
 
 library(TCGAbiolinks)
 

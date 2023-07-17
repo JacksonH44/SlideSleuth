@@ -4,7 +4,7 @@
   
   Author: Jackson Howe
   Date Created: June 24, 2023
-  Last Updated: July 7, 2023
+  Last Updated: July 14, 2023
   '''
 
 import tensorflow as tf
@@ -30,13 +30,13 @@ from optparse import OptionParser
 import sys
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
-# tf.compat.v1.disable_eager_execution()
 
+DIR_PATH = '/scratch/jhowe4/outputs/GDC/brca_example_10x'
 LABEL = '/scratch/jhowe4/outputs/GDC/brca_example_10x/labels.csv'
-ERR_FILE = '/scratch/jhowe4/outputs/GDC/brca_example_10x/corrupt_images_log.txt'
-WEIGHTS_PATH = '../model/weights'
+ERR_FILE = '/scratch/jhowe4/outputs/GDC/brca_example_10x/error_log.txt'
+WEIGHTS_PATH = '../../models/weights/resnet50_full_train_'
 
-EPOCHS = 5
+EPOCHS = 10
 BATCH_SIZE = 64
 NUM_TRAINING_TILES = 203110
 NUM_POS_TRAINING = 175410
@@ -130,9 +130,14 @@ def organize_dir(dir_path):
       
       to:
       root/
-        [case_1]-[img_1]
-        ...
-        [case_n]-[img_m]
+        0/
+          [case_1]-[img_1]
+          ...
+          [case_n]-[img_m]
+        1/
+          [case_1]-[img_1]
+          ...
+          [case_n]-[img_m]
 
   Args:
       dir_path (String): Path to the root folder of the dataset directory
@@ -218,7 +223,7 @@ def make_model(metrics=METRICS, output_bias=None):
   model.add(tf.keras.applications.ResNet50(include_top = False, pooling = 'avg', weights ='imagenet'))
     
   # Add dense layers
-  model.add(tf.keras.layers.Dense(1024, activation='relu'))
+  # model.add(tf.keras.layers.Dense(1024, activation='relu'))
   model.add(tf.keras.layers.Dense(256, activation='relu'))
   model.add(tf.keras.layers.Dense(32, activation='relu'))
   
@@ -226,7 +231,7 @@ def make_model(metrics=METRICS, output_bias=None):
   model.add(tf.keras.layers.Dense(1, activation = 'sigmoid', bias_initializer=output_bias))
   
   # Not training the resnet on the new data set. Using the pre-trained weigths
-  model.layers[0].trainable = False 
+  # model.layers[0].trainable = False 
     
   model.compile(
     optimizer=tf.keras.optimizers.Adam(learning_rate=1e-5),
@@ -329,17 +334,17 @@ if __name__ == '__main__':
     default=False,
     help='preprocess image data before running transfer learning'
   )
-  
-  # Make sure the error file is clean
-  if exists(ERR_FILE):
-    remove(ERR_FILE)
     
-  dir_path = '/scratch/jhowe4/outputs/GDC/paad_example_2'
+  dir_path = DIR_PATH
   train_path = join(dir_path, 'train')
   test_path = join(dir_path, 'test')
   valid_path = join(dir_path, 'valid')
   
   if is_opt_provided(parser, 'preprocessing directive'):
+    # Make sure the error file is clean
+    if exists(ERR_FILE):
+      remove(ERR_FILE)
+    
     # Organize the data directory
     organize_dir(train_path)
     organize_dir(test_path)
@@ -409,6 +414,8 @@ if __name__ == '__main__':
     restore_best_weights=True
   )
   
+  model.summary()
+  
   # Fit the model
   history = model.fit(
     train_ds,
@@ -450,10 +457,10 @@ if __name__ == '__main__':
     linestyle='--'
   )
   plt.legend(loc='lower right')
-  plt.savefig('../img/roc_curve.png')
+  plt.savefig('../../img/roc_curve.png')
   plt.close()
   
   # Plot other model metrics
   plot_metrics(history)
-  plt.savefig('../img/plot_metrics.pdf')
+  plt.savefig('../../img/plot_metrics.png')
   plt.close()

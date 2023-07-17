@@ -7,18 +7,27 @@ Last Updated: July 12, 2023
 
 import tensorflow as tf
 from PIL import ImageFile
-from os import listdir, remove, environ, stat
-from os.path import join, isdir
+from os import listdir, remove, environ, stat, makedirs
+from os.path import join, isdir, exists
 from shutil import move, rmtree
 
 ## Global variables
 BATCH_SIZE = 64
 IMG_SIZE = 224
-ERR_FILE = '../outputs/HNE/train/corrupt_images.txt'
-AUTOTUNE = tf.data.AUTOTUNE
+ERR_FILE = '/scratch/jhowe4/outputs/uhn/CK7/error_log.txt'
+DIR_PATH = '/scratch/jhowe4/outputs/uhn/CK7'
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+
+def _create_folder(folder):
+  """A function that creates a folder if need be
+
+  Args:
+      folder (str): Path to the folder
+  """
+  if not exists(folder):
+      makedirs(folder)
 
 def organize_dir(root_dir):
   """A function that changes directory structure from:
@@ -36,19 +45,26 @@ def organize_dir(root_dir):
   to:
   
   root_dir/
-    001-5.0-im1.jpeg
-    ...
-    100-5.0-imN.jpeg
+    folder/
+      001-5.0-im1.jpeg
+      ...
+      100-5.0-imN.jpeg
 
   Args:
       root_dir (str): The path to the root directory you wish to be reorganized
   """
+  
+  # ImageDataGenerator requires a subfolder inside of each train, test, valid 
+  # folder
+  _create_folder(f"{join(root_dir, 'folder')}")
   for sub_dir in listdir(root_dir):
-    if isdir(join(root_dir, sub_dir)):
+    
+    # Make sure we don't include the subfolder when moving images
+    if isdir(join(root_dir, sub_dir)) and not (sub_dir == 'folder'):
       for mag in listdir(join(root_dir, sub_dir)):
         for img in listdir(join(root_dir, sub_dir, mag)):
           new_img_name = f"{sub_dir.split('_')[0]}-{mag}-{img}"
-          move(f'{join(root_dir, sub_dir, mag, img)}', f'{join(root_dir, new_img_name)}')
+          move(f'{join(root_dir, sub_dir, mag, img)}', f'{join(root_dir, "folder", new_img_name)}')
           
   # Go through and remove the other files from the directory that are not in #
   # use anymore (keep any .jpeg and the error log file)
@@ -73,7 +89,7 @@ def clean_directory(clean_dir, log_file=ERR_FILE):
     filesize = statfile.st_size
     if filesize == 0 and not join(clean_dir, file) == log_file:
       with open(log_file, 'a') as err:
-        err.write(f"{join(clean_dir, file)} removed because it was corrupt.")
+        err.write(f"{join(clean_dir, file)} removed because it was corrupt.\n")
       remove(join(clean_dir, file))
       
 def preprocess_directory(root_path):
@@ -108,5 +124,5 @@ def preprocess_directory(root_path):
   clean_directory(test_path)
 
 if __name__ == '__main__':
-  dir_path = '../outputs/HNE'
+  dir_path = DIR_PATH
   preprocess_directory(dir_path)

@@ -1,11 +1,11 @@
-# TissueTango
+# SlideSleuth
 
 ## Description
-TissueTango is a tool to analyze large whole slide image (WSI) datasets of lung adenocarcinoma (LUAD) via feature extraction and unsupervised learning. Specifically, TissueTango uses each feature vector as an input to a variational autoencoder (VAE), then clusters made by the VAE are analyzed. Within the clusters, we aim to identify biomarkers/cancer drivers for LUAD. 
+SlideSleuth is a tool to analyze large whole slide image (WSI) datasets of lung adenocarcinoma (LUAD) via feature extraction and unsupervised learning. Specifically, SlideSleuth uses each slide image as input to a variational autoencoder (VAE), then clusters made by the VAE are analyzed. Within the clusters, we aim to identify biomarkers/cancer drivers for LUAD. 
 
-The tool includes a pipeline that will tile each WSI in the dataset folder, then extract the feature vector for each tile image to a csv file. Once the feature vectors are clustered by the VAE, expert pathologists and scientists examine the clusters for patterns.
+The tool includes pipelines that prepare WSI datasets for both a supervised classifier and a variational autoencoder.
 
-Currently, the tool is still in active development. As of right now, only the data pipeline has been built. The development languages are Python and R. Pipelining and Development are done with the help of Tensorflow, Openslide, and the R package Bioconductor. Containerization is done with Apptainer (formerly Singularity).
+Currently, the tool is still in active development. As of right now, only the data pipeline has been built. The development languages are Python and R, and bash. Pipelining and development are done with the help of Tensorflow, Openslide, and the R package Bioconductor. Containerization is done with Apptainer (formerly Singularity).
 
 ## Table of Contents
 * [Installation Instructions](#install)
@@ -14,8 +14,6 @@ Currently, the tool is still in active development. As of right now, only the da
 * [Extra Points](#extra)
 
 ## Installation Instructons <a name="install"></a>
-
-
 
 ## Use Instructions <a name="use"></a>
 

@@ -2,7 +2,7 @@
 #SBATCH --account=def-sushant
 #SBATCH --cpus-per-task=6
 #SBATCH --mem=32G
-#SBATCH --time=0-24:00
+#SBATCH --time=0-24:00:00
 #SBATCH --job-name=tile_tcga
 #SBATCH --output=../outputs/SLURM_DEFAULT_OUT/tile_tcga-%j.out
 #SBATCH --error=../outputs/SLURM_DEFAULT_OUT/tile_tcga-%j.err
@@ -19,16 +19,16 @@ source $ENVDIR/bin/activate
 pip install --no-index openslide-python
 
 input_folder="/scratch/jhowe4/inputs/GDC/brca_example"
-train_folder="/scratch/jhowe4/outputs/GDC/brca_example_10x/train"
-valid_folder="/scratch/jhowe4/outputs/GDC/brca_example_10x/valid"
-test_folder="/scratch/jhowe4/outputs/GDC/brca_example_10x/test"
+train_folder="../../data/external/brca_5x/train"
+valid_folder="../../data/external/brca_5x/valid"
+test_folder="../../data/external/brca_5x/test"
 
 mkdir -p $train_folder
 mkdir -p $valid_folder
 mkdir -p $test_folder
 
-validation_break="$(ls ${input_folder} | head -272 | tail -1)"
-test_break="$(ls ${input_folder} | head -307 | tail -1)"
+validation_break="$(ls ${input_folder} | head -205 | tail -1)"
+test_break="$(ls ${input_folder} | head -231 | tail -1)"
 
 # loop through all image files in the input folder and call deepzoom
 # on them
@@ -39,7 +39,7 @@ for file in $(ls $input_folder); do
   elif [ "$file" = "${test_break}" ]; then
     output_folder=$test_folder
   fi
-  python ../src/deepzoom_tile.py -s 224 -e 0 -j 32 -B 50 --output="$output_folder" "$input_folder/$file"
+  python deepzoom_tile.py -s 224 -e 0 -j 32 -B 50 --output="$output_folder" "$input_folder/$file"
 done
 
 deactivate

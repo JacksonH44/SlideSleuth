@@ -97,7 +97,7 @@ class CVAE:
   '''
     Training the model
   '''
-  def train(self, x_train, batch_size, num_epochs, steps_per_epoch,validation_data, validation_steps):
+  def train(self, x_train, num_epochs, steps_per_epoch, validation_data, validation_steps, cp_path):
     # Since an autoencoder wants to minimize reconstruction loss, the desired output (second argument) is the training data itself
     
     # Create an early stopping callback based on reconstruction loss
@@ -109,14 +109,28 @@ class CVAE:
       restore_best_weights=True
     )
     
+    # Create a checkpoint to save weights after each epoch
+    self._create_folder(cp_path)
+    cp_path = os.path.join(cp_path, 'weights-{epoch:02d}.h5')
+    
+    model_cp = tf.keras.callbacks.ModelCheckpoint(
+      filepath=cp_path, 
+      monitor='val_calculate_reconstruction_loss',
+      verbose=1,
+      save_freq='epoch',
+      save_weights_only=True
+    )
+    
+    # Save model initial weights
+    self.model.save_weights(cp_path.format(epoch=0))
+    
+    # Train the model and return its history
     history = self.model.fit(
       x_train,
-      x_train,
-      batch_size=batch_size,
       epochs=num_epochs,
       steps_per_epoch=steps_per_epoch,
-      callbacks=[early_stopping],
-      validation_data=(validation_data, validation_data),
+      callbacks=[early_stopping, model_cp],
+      validation_data=validation_data,
       validation_steps=validation_steps,
       shuffle=True
     )

@@ -9,7 +9,7 @@ TEST_DIR = '../outputs/HNE_features/test'
 BATCH_SIZE = 32
 NUM_EPOCHS = 100
 
-def plot_loss(history, metric):
+def plot_loss(history, metric, save_file):
   """A function that plots the loss metric over time for a vae training session
 
   Args:
@@ -31,7 +31,7 @@ def plot_loss(history, metric):
   plt.xlabel('Epoch')
   plt.ylabel('Loss')
   plt.title(f'{metric}')
-  plt.savefig(f'../img/vae_{metric}')
+  plt.savefig(save_file)
   plt.legend()
   plt.close()
   
@@ -60,6 +60,20 @@ if __name__ == '__main__':
   )
   
   # Plot the loss
-  plot_loss(history, 'calculate_reconstruction_loss')
-  plot_loss(history, '_calculate_kl_loss')
-  plot_loss(history, 'loss')
+  plot_loss(
+    history, 
+    'calculate_reconstruction_loss', 
+    '../../img/vae_reconstruction_loss.png'
+  )
+  
+  plot_loss(
+    history, 
+    '_calculate_kl_loss', 
+    '../../img/vae_kl_loss.png'
+  )
+  
+  plot_loss(
+    history, 
+    'loss', 
+    '../../img/vae_loss.png'
+  )
