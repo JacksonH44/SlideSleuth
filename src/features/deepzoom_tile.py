@@ -12,27 +12,24 @@
     Author: Akshina
 '''
 
-# The path can also be read from a config file, etc.
-# Pillow module for reading images and handling them
-from PIL import Image, ImageDraw
-from glob import glob  # filename path expansion
+from glob import glob  
 from xml.dom import minidom
 import sys
-import time
 from multiprocessing import Process, JoinableQueue
 import subprocess
-import scipy.misc
 import numpy as np
 from unicodedata import normalize
 import shutil
 import re
 from optparse import OptionParser
-from openslide.deepzoom import DeepZoomGenerator
-from openslide import open_slide, ImageSlide
 import json
 import os
 
+from openslide.deepzoom import DeepZoomGenerator
+from openslide import open_slide, ImageSlide
+
 OPENSLIDE_PATH = r'/Users/jacks/Downloads/openslide-win64-20230414/openslide-win64-20230414/bin'
+VIEWER_SLIDE_NAME = 'slide'
 
 if hasattr(os, 'add_dll_directory'):
     # Python >= 3.8 on Windows
@@ -44,11 +41,9 @@ else:
 #import templates
 
 
-VIEWER_SLIDE_NAME = 'slide'
-
-
 class TileWorker(Process):
     """A child process that generates and writes tiles."""
+    
 
     def __init__(self, queue, slidepath, tile_size, overlap, limit_bounds, quality, _Bkg, _ROIpc):
         Process.__init__(self, name='TileWorker')
@@ -76,7 +71,6 @@ class TileWorker(Process):
             if last_associated != associated:
                 dz = self._get_dz(associated)
                 last_associated = associated
-            #try:
             if True:
                 try:
                     tile = dz.get_tile(level, address)
@@ -128,8 +122,6 @@ class DeepZoomImageTiler(object):
         self._write_dzi()
 
     def _write_tiles(self):
-        ########################################3
-        # nc_added
         Magnification = 20  # the magnification to start with
         tol = 2
         #get slide dimensions, zoom levels, and objective information
@@ -141,9 +133,9 @@ class DeepZoomImageTiler(object):
         except:
             print(self._basename + " - No Obj information found")
             return
-        #calculate magnifications
+        # calculate magnifications
         Available = tuple(Objective / x for x in Factors)
-        #find highest magnification greater than or equal to 'Desired'
+        # find highest magnification greater than or equal to 'Desired'
         Mismatch = tuple(x-Magnification for x in Available)
         AbsMismatch = tuple(abs(x) for x in Mismatch)
         if len(AbsMismatch) < 1:
