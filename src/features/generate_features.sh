@@ -6,8 +6,8 @@
 #SBATCH --time=0-16:00
 #SBATCH --nodes=3
 #SBATCH --job-name=generate_features
-#SBATCH --output=../outputs/SLURM_DEFAULT_OUT/generate_features-%j.out
-#SBATCH --error=../outputs/SLURM_DEFAULT_OUT/generate_features-%j.err
+#SBATCH --output=../../SLURM_DEFAULT_OUT/generate_features-%j.out
+#SBATCH --error=../../SLURM_DEFAULT_OUT/generate_features-%j.err
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=j2howe@uwaterloo.ca
 
@@ -19,8 +19,9 @@ module load cuda cudnn
 module load scipy-stack
 module load openslide
 source $ENVDIR/bin/activate
-pip install --no-index tensorflow
-pip install --no-index openslide-python
-python ../src/generate_features.py ../outputs/HNE ../outputs/HNE_features
+pip install --no-index --upgrade pip
+pip install -q --no-index tensorflow
+pip install -q --no-index openslide-python
+python generate_features.py ../../data/interim/HNE ../../data/processed/HNE_features
 deactivate
 rm -rf $ENVDIR

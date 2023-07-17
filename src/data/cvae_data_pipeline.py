@@ -1,17 +1,17 @@
 """The data pipeline for the images fed into the Convolutional Variational Autoencoder
 
-Author: Jackson Howe
 Date Created: July 12, 2023
 Last Updated: July 12, 2023
 """
 
-import tensorflow as tf
-from PIL import ImageFile
+__author__ = "Jackson Howe"
+
 from os import listdir, remove, environ, stat, makedirs
 from os.path import join, isdir, exists
 from shutil import move, rmtree
 
-## Global variables
+from PIL import ImageFile
+
 BATCH_SIZE = 64
 IMG_SIZE = 224
 ERR_FILE = '/scratch/jhowe4/outputs/uhn/CK7/error_log.txt'
@@ -111,15 +111,13 @@ def preprocess_directory(root_path):
   valid_path = join(root_path, 'valid')
   test_path = join(root_path, 'test')
   
-  # Train
+  # Organize and clean the directories for all of the train, test, and validation folders.
   organize_dir(train_path)
   clean_directory(train_path)
   
-  # Valid
   organize_dir(valid_path)
   clean_directory(valid_path)
   
-  # Test
   organize_dir(test_path)
   clean_directory(test_path)
 

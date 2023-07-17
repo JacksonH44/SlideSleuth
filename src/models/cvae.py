@@ -1,40 +1,37 @@
-'''
-  A program that implements a deep convolutional variational autoencoder
+"""A class that implements a deep convolutional variational autoencoder
 
   Author: YouTube Channel - Valerio Velardo
   link: https://www.youtube.com/watch?v=TtyoFTyJuEY&list=PL-wATfeyAMNpEyENTc-tVH5tfLGKtSWPp&index=4
   
   Date Created: June 7, 2023
   Last Updated: June 12, 2023
-'''
+"""
+
+import os
+import pickle
 
 from tensorflow.keras import Model
 from tensorflow.keras.layers import Input, Conv2D, ReLU, BatchNormalization, Flatten, Dense, Reshape, Conv2DTranspose, Activation, Lambda
 from tensorflow.keras import backend as K
 from keras.optimizers import Adam
 import numpy as np
-import os
-import pickle
-
 import tensorflow as tf
 
 # Make sure tensorflow doesn't evaluate any operations before the whole model architecture is built
 tf.compat.v1.disable_eager_execution()
 
-'''
-  Calculate the reconstruction term for the VAE loss function
-'''
 
 def calculate_reconstruction_loss(y_target, y_predicted):
+  """Calculate reconstruction term for VAE loss function"""
+  
   error = y_target - y_predicted
   reconstruction_loss = K.mean(K.square(error), axis=[1, 2, 3])
   return reconstruction_loss
 
-'''
-  Calculate the standardisation term for the VAE loss function
-  
-'''
+
 def calculate_kl_loss(model):
+  """Calculate regularization term for VAE loss function"""
+  
   # wrap '_calculate_kl_loss' such that it takes the model as an argument,
   # returns a function which can take arbitrary number of arguments
   # (for compatibility with 'metrics' and utility in loss function)
@@ -47,14 +44,10 @@ def calculate_kl_loss(model):
     return kl_loss
   return _calculate_kl_loss
 
-class CVAE:
-  '''
-    VAE represents a Deep Convolutional variational autoencoder architecture
-  '''
 
-  '''
-    Constructor
-  '''
+class CVAE:
+  """CVAE represents a deep convolutional variational autoencoder architecture"""
+
   def __init__(self, input_shape, conv_filters, conv_kernels, conv_strides, latent_space_dim):
     self.input_shape = input_shape # [width, height, num_channels]
     self.conv_filters = conv_filters # [first, second, ..., last]
@@ -75,18 +68,16 @@ class CVAE:
     # Build model
     self._build()
 
-  '''
-    Public method that prints information about the architecture of the model to the console
-  '''
   def summary(self):
+    """Print architecture information to the console."""
+    
     self.encoder.summary()
     self.decoder.summary()
     self.model.summary()
  
-  '''
-    Compile model before use
-  '''
   def compile(self, learning_rate=0.0001):
+    """Compile the model before use"""
+    
     optimizer = Adam(learning_rate=learning_rate)
     # standardization + regularisation for the loss function
     self.model.compile(
@@ -94,13 +85,11 @@ class CVAE:
       loss=self._calculate_combined_loss,
       metrics=[calculate_reconstruction_loss, calculate_kl_loss(self)])
 
-  '''
-    Training the model
-  '''
   def train(self, x_train, num_epochs, steps_per_epoch, validation_data, validation_steps, cp_path):
+    """Train the model"""
     # Since an autoencoder wants to minimize reconstruction loss, the desired output (second argument) is the training data itself
     
-    # Create an early stopping callback based on reconstruction loss
+    # Create an early stopping callback based on reconstruction loss.
     early_stopping = tf.keras.callbacks.EarlyStopping(
       monitor='val_calculate_reconstruction_loss',
       verbose=1,
@@ -109,7 +98,7 @@ class CVAE:
       restore_best_weights=True
     )
     
-    # Create a checkpoint to save weights after each epoch
+    # Create a checkpoint to save weights after each epoch.
     self._create_folder(cp_path)
     cp_path = os.path.join(cp_path, 'weights-{epoch:02d}.h5')
     
@@ -137,24 +126,21 @@ class CVAE:
     
     return history
     
-  '''
-    Save a vae in the desired folder. If no such folder exists, build the folder
-  '''
   def save(self, save_folder="."):
+    """Save a VAE to the desired folder"""
+    
     self._create_folder(save_folder)
     self._save_parameters(save_folder)
     self._save_weights(save_folder)
 
-  '''
-    Load trained weights from model
-  '''
   def load_weights(self, weights_path):
+    """Load trained weights for a model"""
+    
     self.model.load_weights(weights_path)
 
-  '''
-    Reconstruct images using a trained vae
-  '''
   def reconstruct(self, images):
+    """Reconstruct images using a trained VAE"""
+    
     # Pipe the images into the encoder, then pipe the result of the encoder back
     # into the decoder
     latent_representations = self.encoder.predict(images)
@@ -163,9 +149,8 @@ class CVAE:
 
   @classmethod
   def load(cls, save_folder="."):
-    '''
-      A method that loads an autoencoder from a saved folder
-    '''
+    """Load an autoencoder from a saved folder"""
+    
     parameters_path = os.path.join(save_folder, "parameters.pkl")
     weights_path = os.path.join(save_folder, "weights.h5")
     with open(parameters_path, "rb") as f:
@@ -180,16 +165,10 @@ class CVAE:
     combined_loss = self.reconstruction_loss_weight * reconstruction_loss + kl_loss
     return combined_loss
     
-  '''
-    Make a directory if it doesn't exist
-  '''
   def _create_folder(self, folder):
     if not os.path.exists(folder):
       os.makedirs(folder)
 
-  '''
-    Save parameters of the autoencoder model to the specified folder
-  '''
   def _save_parameters(self, folder):
     parameters = [
       self.input_shape,
@@ -204,32 +183,21 @@ class CVAE:
     with open(save_path, "wb") as f:
       pickle.dump(parameters, f)
 
-  '''
-    Save trained weights of model
-  '''
   def _save_weights(self, folder):
     save_path = os.path.join(folder, "weights.h5")
     self.model.save_weights(save_path)
 
-  ''' 
-  Three-step model building 
-  '''
   def _build(self):
     self._build_encoder()
     self._build_decoder()
     self._build_vae()
 
-  '''
-    Link together encoder and decoder (encoder is the input to the decoder)
-  '''
   def _build_vae(self):
+    """Link together encoder and decoder (encoder is the input to the decoder)."""
     model_input = self._model_input
     model_output = self.decoder(self.encoder(model_input))
     self.model = Model(model_input, model_output, name="vae")
 
-  '''
-    A function that calls the building blocks of building the decoder
-  '''
   def _build_decoder(self):
     # Input layer
     decoder_input = self._add_decoder_input()
@@ -248,9 +216,6 @@ class CVAE:
 
     self.decoder = Model(decoder_input, decoder_output, name="decoder")
 
-  '''
-    Return the input layer with the latent space dimension
-  '''
   def _add_decoder_input(self):
     return Input(shape=self.latent_space_dim, name="decoder_input")
   
@@ -263,23 +228,15 @@ class CVAE:
   def _add_reshape_layer(self, dense_layer):
     return Reshape(self._shape_before_bottleneck)(dense_layer)
 
-  '''
-    Adds convolutional transpose blocks
-
-    arch is the graph of nodes representing the built network so far
-  '''
   def _add_conv_transpose_layers(self, arch):
+    """Adds convolutional transpose blocks"""
+    
     # loop through all the conv layers in reverse order and stop at the first layer
     for layer_idx in reversed(range(1, self._num_conv_layers)):
       # [layer_A, layer_B, layer_C] -> [layer_C, layer_B]
       arch = self._add_conv_transpose_layer(arch, layer_idx)
     return arch
   
-  '''
-    Add one conv transpose block to the graph
-
-    One conv transpose block consists of conv transpose, relu layer, and batch norm layer
-  '''
   def _add_conv_transpose_layer(self, arch, layer_idx):
     # The conv transpose layer number for the decoder is the reverse of the encoder
     layer_num = self._num_conv_layers - layer_idx
@@ -319,9 +276,6 @@ class CVAE:
     arch = output_layer(arch)
     return arch
 
-  '''
-    A function that calls the building blocks of creating the encoder
-  '''
   def _build_encoder(self):
     # Create a basic architecture consisting of just the input layer
     encoder_input = self._add_encoder_input() 
@@ -335,30 +289,19 @@ class CVAE:
 
     self.encoder = Model(inputs=encoder_input, outputs=bottleneck, name="encoder")
 
-  '''
-    Get Input object with the specified input shape
-  '''
   def _add_encoder_input(self):
     return Input(shape=self.input_shape, name="encoder_input")
 
-  '''
-    Create convolutional blocks as specified by input
-
-    arch is the graph of nodes representing the built network so far
-  '''
   def _add_conv_layers(self, encoder_input):
+    """Create convolutional layers for the encoder"""
+    
     arch = encoder_input
 
     # Add one layer at a time to the existing architecture
     for layer_idx in range(self._num_conv_layers):
       arch = self._add_conv_layer(layer_idx, arch)
     return arch
-
-  '''
-    Add a convolutional block to the existing architecture
-
-    Each block consists of Conv2D, ReLU, and Batch Normalization layer
-  '''
+  
   def _add_conv_layer(self, layer_index, arch):
     layer_num = layer_index + 1
 
@@ -383,11 +326,9 @@ class CVAE:
     # Return the architecture with an additional conv block
     return arch
 
-  '''
-    Flatten the data, add a bottleneck with Guassion sampling (dense layer) to 
-    the architecture
-  '''
   def _add_bottleneck(self, arch):
+    """Flatten the data, add a bottleneck with Gaussian sampling to the architecture"""
+    
     # Store the info about the flattened model for the decoder
     self._shape_before_bottleneck = K.int_shape(arch)[1:] # [batch size, width, height, num_channels]
 
@@ -421,12 +362,3 @@ class CVAE:
       name="encoder_output")([self.mu, self.log_variance])
     
     return arch
-
-if __name__ == '__main__':
-  cvae = CVAE(
-    input_shape=[224, 224, 3], 
-    conv_filters=[32, 64, 64, 64], 
-    conv_kernels=[3, 3, 3, 3], 
-    conv_strides=[1, 2, 2, 1], 
-    latent_space_dim=2)
-  cvae.summary()

@@ -1,33 +1,32 @@
-'''
-  A program that augments the pipeline specific to TCGA data and trains a 
-  transfer learning model on that data generated from the pipeline.
+"""A program that trains and tests a resnet classifier 
   
-  Author: Jackson Howe
   Date Created: June 24, 2023
-  Last Updated: July 14, 2023
-  '''
+  Last Updated: July 17, 2023
+"""
+
+__author__ = "Jackson Howe"
+
+import math
+import os
+from os import listdir, makedirs, remove
+from os.path import join, isdir, exists
+from shutil import move, rmtree
+import tempfile
+from datetime import datetime
+import pickle
+from optparse import OptionParser
+import sys
 
 import tensorflow as tf
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.applications.resnet50 import preprocess_input
 import pandas as pd
 import numpy as np
-from os import listdir, makedirs, remove
-from os.path import join, isdir, exists
-from shutil import move, rmtree
 from PIL import Image
 from PIL import ImageFile
 import PIL
 import matplotlib.pyplot as plt
 from sklearn.metrics import roc_curve
-
-import math
-import os
-import tempfile
-from datetime import datetime
-import pickle
-from optparse import OptionParser
-import sys
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 

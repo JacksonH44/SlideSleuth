@@ -4,8 +4,8 @@
 #SBATCH --time=0-03:00:00
 #SBATCH --mem=32G
 #SBATCH --job-name=cvae_data_pipeline
-#SBATCH --output=../../outputs/SLURM_DEFAULT_OUT/cvae_data_pipeline-%j.out
-#SBATCH --error=../../outputs/SLURM_DEFAULT_OUT/cvae_data_pipeline-%j.err
+#SBATCH --output=../../SLURM_DEFAULT_OUT/cvae_data_pipeline-%j.out
+#SBATCH --error=../../SLURM_DEFAULT_OUT/cvae_data_pipeline-%j.err
 #SBATCH --mail-type=all
 #SBATCH --mail-user=j2howe@uwaterloo.ca
 
@@ -19,6 +19,6 @@ source $ENVDIR/bin/activate
 pip install --no-index --upgrade pip
 pip install -q --no-index tensorflow
 pip install -q --no-index pillow
-python ../../src/unsupervised/cvae_data_pipeline.py
+python cvae_data_pipeline.py
 deactivate
 rm -rf $ENVDIR

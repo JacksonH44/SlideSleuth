@@ -4,8 +4,8 @@
 #SBATCH --mem=5000M
 #SBATCH --time=0-00:05
 #SBATCH --job-name=analyze_cvae
-#SBATCH --output=../../outputs/SLURM_DEFAULT_OUT/analyze_cvae-%j.out
-#SBATCH --error=../../outputs/SLURM_DEFAULT_OUT/analyze_cvae-%j.err
+#SBATCH --output=../../SLURM_DEFAULT_OUT/analyze_cvae-%j.out
+#SBATCH --error=../../SLURM_DEFAULT_OUT/analyze_cvae-%j.err
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=j2howe@uwaterloo.ca
 
@@ -17,6 +17,6 @@ module load scipy-stack
 module load cuda/11.7
 source $ENVDIR/bin/activate
 pip install --no-index tensorflow
-python ../../src/unsupervised/analyze_cvae.py
+python analyze_cvae.py
 deactivate
 rm -rf $ENVDIR

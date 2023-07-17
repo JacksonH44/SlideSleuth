@@ -69,11 +69,3 @@ def extract_features(model, img_path, output_path):
       np.savetxt(csvfile, features, delimiter=",", fmt="%1.5f")
   except PIL.UnidentifiedImageError:
     print(f"The image at {img_path} is unreadable")
-
-
-if __name__ == '__main__':
-  img_path = sys.argv[1]
-  data_path = sys.argv[2]
-
-  model = instantiate()
-  extract_features(model, img_path, data_path)
