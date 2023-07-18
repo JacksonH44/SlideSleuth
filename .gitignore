@@ -6,3 +6,8 @@ data/raw
 models/weights
 reports/figures
 container.sif
+src/__pycache
+src/data/__pycache__
+src/features/__pycache__
+src/models/__pycache__
+src/visualization/__pycache__

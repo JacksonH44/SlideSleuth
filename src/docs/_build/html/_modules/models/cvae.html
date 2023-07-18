@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>models.cvae &mdash; SlideSleuth  documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script src="../../_static/sphinx_highlight.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            SlideSleuth
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../modules.html">src</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">SlideSleuth</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">models.cvae</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for models.cvae</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;A class that implements a deep convolutional variational autoencoder</span>
+
+<span class="sd">  Author: YouTube Channel - Valerio Velardo</span>
+<span class="sd">  link: https://www.youtube.com/watch?v=TtyoFTyJuEY&amp;list=PL-wATfeyAMNpEyENTc-tVH5tfLGKtSWPp&amp;index=4</span>
+<span class="sd">  </span>
+<span class="sd">  Date Created: June 7, 2023</span>
+<span class="sd">  Last Updated: June 12, 2023</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">pickle</span>
+
+<span class="kn">from</span> <span class="nn">tensorflow.keras</span> <span class="kn">import</span> <span class="n">Model</span>
+<span class="kn">from</span> <span class="nn">tensorflow.keras.layers</span> <span class="kn">import</span> <span class="n">Input</span><span class="p">,</span> <span class="n">Conv2D</span><span class="p">,</span> <span class="n">ReLU</span><span class="p">,</span> <span class="n">BatchNormalization</span><span class="p">,</span> <span class="n">Flatten</span><span class="p">,</span> <span class="n">Dense</span><span class="p">,</span> <span class="n">Reshape</span><span class="p">,</span> <span class="n">Conv2DTranspose</span><span class="p">,</span> <span class="n">Activation</span><span class="p">,</span> <span class="n">Lambda</span>
+<span class="kn">from</span> <span class="nn">tensorflow.keras</span> <span class="kn">import</span> <span class="n">backend</span> <span class="k">as</span> <span class="n">K</span>
+<span class="kn">from</span> <span class="nn">keras.optimizers</span> <span class="kn">import</span> <span class="n">Adam</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
+
+<span class="c1"># Make sure tensorflow doesn&#39;t evaluate any operations before the whole model architecture is built</span>
+<span class="n">tf</span><span class="o">.</span><span class="n">compat</span><span class="o">.</span><span class="n">v1</span><span class="o">.</span><span class="n">disable_eager_execution</span><span class="p">()</span>
+
+
+<div class="viewcode-block" id="calculate_reconstruction_loss"><a class="viewcode-back" href="../../models.html#models.cvae.calculate_reconstruction_loss">[docs]</a><span class="k">def</span> <span class="nf">calculate_reconstruction_loss</span><span class="p">(</span><span class="n">y_target</span><span class="p">,</span> <span class="n">y_predicted</span><span class="p">):</span>
+<span class="w">  </span><span class="sd">&quot;&quot;&quot;Calculate reconstruction term for VAE loss function&quot;&quot;&quot;</span>
+  
+  <span class="n">error</span> <span class="o">=</span> <span class="n">y_target</span> <span class="o">-</span> <span class="n">y_predicted</span>
+  <span class="n">reconstruction_loss</span> <span class="o">=</span> <span class="n">K</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">K</span><span class="o">.</span><span class="n">square</span><span class="p">(</span><span class="n">error</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">])</span>
+  <span class="k">return</span> <span class="n">reconstruction_loss</span></div>
+
+
+<div class="viewcode-block" id="calculate_kl_loss"><a class="viewcode-back" href="../../models.html#models.cvae.calculate_kl_loss">[docs]</a><span class="k">def</span> <span class="nf">calculate_kl_loss</span><span class="p">(</span><span class="n">model</span><span class="p">):</span>
+<span class="w">  </span><span class="sd">&quot;&quot;&quot;Calculate regularization term for VAE loss function&quot;&quot;&quot;</span>
+  
+  <span class="c1"># wrap &#39;_calculate_kl_loss&#39; such that it takes the model as an argument,</span>
+  <span class="c1"># returns a function which can take arbitrary number of arguments</span>
+  <span class="c1"># (for compatibility with &#39;metrics&#39; and utility in loss function)</span>
+  <span class="c1"># and returns the kl loss</span>
+  <span class="c1"># Reference: https://stackoverflow.com/questions/73981914/tensorflow-attribute-error-method-object-has-no-attribute-from-serialized</span>
+  <span class="k">def</span> <span class="nf">_calculate_kl_loss</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">):</span>
+    <span class="c1"># D_KL = 1/2 * \Sigma {1 + log_variance - \mu - \sigma}</span>
+    <span class="n">kl_loss</span> <span class="o">=</span> <span class="o">-</span><span class="mf">0.5</span> <span class="o">*</span> <span class="n">K</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">model</span><span class="o">.</span><span class="n">log_variance</span> <span class="o">-</span>
+                           <span class="n">K</span><span class="o">.</span><span class="n">square</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">mu</span><span class="p">)</span> <span class="o">-</span> <span class="n">K</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">log_variance</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">kl_loss</span>
+  <span class="k">return</span> <span class="n">_calculate_kl_loss</span></div>
+
+
+<div class="viewcode-block" id="CVAE"><a class="viewcode-back" href="../../models.html#models.cvae.CVAE">[docs]</a><span class="k">class</span> <span class="nc">CVAE</span><span class="p">:</span>
+<span class="w">  </span><span class="sd">&quot;&quot;&quot;CVAE represents a deep convolutional variational autoencoder architecture&quot;&quot;&quot;</span>
+
+  <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">input_shape</span><span class="p">,</span> <span class="n">conv_filters</span><span class="p">,</span> <span class="n">conv_kernels</span><span class="p">,</span> <span class="n">conv_strides</span><span class="p">,</span> <span class="n">latent_space_dim</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">input_shape</span> <span class="o">=</span> <span class="n">input_shape</span> <span class="c1"># [width, height, num_channels]</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">conv_filters</span> <span class="o">=</span> <span class="n">conv_filters</span> <span class="c1"># [first, second, ..., last]</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">conv_kernels</span> <span class="o">=</span> <span class="n">conv_kernels</span> <span class="c1"># []</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">conv_strides</span> <span class="o">=</span> <span class="n">conv_strides</span> <span class="c1"># []</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">latent_space_dim</span> <span class="o">=</span> <span class="n">latent_space_dim</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">reconstruction_loss_weight</span> <span class="o">=</span> <span class="mi">1000</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">encoder</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">decoder</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="c1"># Private variables</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_num_conv_layers</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">conv_filters</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_shape_before_bottleneck</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_model_input</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="c1"># Build model</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_build</span><span class="p">()</span>
+
+<div class="viewcode-block" id="CVAE.summary"><a class="viewcode-back" href="../../models.html#models.cvae.CVAE.summary">[docs]</a>  <span class="k">def</span> <span class="nf">summary</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Print architecture information to the console.&quot;&quot;&quot;</span>
+    
+    <span class="bp">self</span><span class="o">.</span><span class="n">encoder</span><span class="o">.</span><span class="n">summary</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">decoder</span><span class="o">.</span><span class="n">summary</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">summary</span><span class="p">()</span></div>
+ 
+<div class="viewcode-block" id="CVAE.compile"><a class="viewcode-back" href="../../models.html#models.cvae.CVAE.compile">[docs]</a>  <span class="k">def</span> <span class="nf">compile</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">learning_rate</span><span class="o">=</span><span class="mf">0.0001</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Compile the model before use&quot;&quot;&quot;</span>
+    
+    <span class="n">optimizer</span> <span class="o">=</span> <span class="n">Adam</span><span class="p">(</span><span class="n">learning_rate</span><span class="o">=</span><span class="n">learning_rate</span><span class="p">)</span>
+    <span class="c1"># standardization + regularisation for the loss function</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span>
+      <span class="n">optimizer</span><span class="o">=</span><span class="n">optimizer</span><span class="p">,</span> 
+      <span class="n">loss</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_calculate_combined_loss</span><span class="p">,</span>
+      <span class="n">metrics</span><span class="o">=</span><span class="p">[</span><span class="n">calculate_reconstruction_loss</span><span class="p">,</span> <span class="n">calculate_kl_loss</span><span class="p">(</span><span class="bp">self</span><span class="p">)])</span></div>
+
+<div class="viewcode-block" id="CVAE.train"><a class="viewcode-back" href="../../models.html#models.cvae.CVAE.train">[docs]</a>  <span class="k">def</span> <span class="nf">train</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x_train</span><span class="p">,</span> <span class="n">num_epochs</span><span class="p">,</span> <span class="n">steps_per_epoch</span><span class="p">,</span> <span class="n">validation_data</span><span class="p">,</span> <span class="n">validation_steps</span><span class="p">,</span> <span class="n">cp_path</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Train the model&quot;&quot;&quot;</span>
+    <span class="c1"># Since an autoencoder wants to minimize reconstruction loss, the desired output (second argument) is the training data itself</span>
+    
+    <span class="c1"># Create an early stopping callback based on reconstruction loss.</span>
+    <span class="n">early_stopping</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">callbacks</span><span class="o">.</span><span class="n">EarlyStopping</span><span class="p">(</span>
+      <span class="n">monitor</span><span class="o">=</span><span class="s1">&#39;val_calculate_reconstruction_loss&#39;</span><span class="p">,</span>
+      <span class="n">verbose</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+      <span class="n">patience</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+      <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;min&#39;</span><span class="p">,</span>
+      <span class="n">restore_best_weights</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    
+    <span class="c1"># Create a checkpoint to save weights after each epoch.</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_create_folder</span><span class="p">(</span><span class="n">cp_path</span><span class="p">)</span>
+    <span class="n">cp_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cp_path</span><span class="p">,</span> <span class="s1">&#39;weights-</span><span class="si">{epoch:02d}</span><span class="s1">.h5&#39;</span><span class="p">)</span>
+    
+    <span class="n">model_cp</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">callbacks</span><span class="o">.</span><span class="n">ModelCheckpoint</span><span class="p">(</span>
+      <span class="n">filepath</span><span class="o">=</span><span class="n">cp_path</span><span class="p">,</span> 
+      <span class="n">monitor</span><span class="o">=</span><span class="s1">&#39;val_calculate_reconstruction_loss&#39;</span><span class="p">,</span>
+      <span class="n">verbose</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+      <span class="n">save_freq</span><span class="o">=</span><span class="s1">&#39;epoch&#39;</span><span class="p">,</span>
+      <span class="n">save_weights_only</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    
+    <span class="c1"># Save model initial weights</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">save_weights</span><span class="p">(</span><span class="n">cp_path</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">epoch</span><span class="o">=</span><span class="mi">0</span><span class="p">))</span>
+    
+    <span class="c1"># Train the model and return its history</span>
+    <span class="n">history</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span>
+      <span class="n">x_train</span><span class="p">,</span>
+      <span class="n">epochs</span><span class="o">=</span><span class="n">num_epochs</span><span class="p">,</span>
+      <span class="n">steps_per_epoch</span><span class="o">=</span><span class="n">steps_per_epoch</span><span class="p">,</span>
+      <span class="n">callbacks</span><span class="o">=</span><span class="p">[</span><span class="n">early_stopping</span><span class="p">,</span> <span class="n">model_cp</span><span class="p">],</span>
+      <span class="n">validation_data</span><span class="o">=</span><span class="n">validation_data</span><span class="p">,</span>
+      <span class="n">validation_steps</span><span class="o">=</span><span class="n">validation_steps</span><span class="p">,</span>
+      <span class="n">shuffle</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">history</span></div>
+    
+<div class="viewcode-block" id="CVAE.save"><a class="viewcode-back" href="../../models.html#models.cvae.CVAE.save">[docs]</a>  <span class="k">def</span> <span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">save_folder</span><span class="o">=</span><span class="s2">&quot;.&quot;</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Save a VAE to the desired folder&quot;&quot;&quot;</span>
+    
+    <span class="bp">self</span><span class="o">.</span><span class="n">_create_folder</span><span class="p">(</span><span class="n">save_folder</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_save_parameters</span><span class="p">(</span><span class="n">save_folder</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_save_weights</span><span class="p">(</span><span class="n">save_folder</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="CVAE.load_weights"><a class="viewcode-back" href="../../models.html#models.cvae.CVAE.load_weights">[docs]</a>  <span class="k">def</span> <span class="nf">load_weights</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">weights_path</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Load trained weights for a model&quot;&quot;&quot;</span>
+    
+    <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">load_weights</span><span class="p">(</span><span class="n">weights_path</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="CVAE.reconstruct"><a class="viewcode-back" href="../../models.html#models.cvae.CVAE.reconstruct">[docs]</a>  <span class="k">def</span> <span class="nf">reconstruct</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">images</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Reconstruct images using a trained VAE&quot;&quot;&quot;</span>
+    
+    <span class="c1"># Pipe the images into the encoder, then pipe the result of the encoder back</span>
+    <span class="c1"># into the decoder</span>
+    <span class="n">latent_representations</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">encoder</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">images</span><span class="p">)</span>
+    <span class="n">reconstructed_images</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">decoder</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">latent_representations</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">reconstructed_images</span><span class="p">,</span> <span class="n">latent_representations</span></div>
+
+<div class="viewcode-block" id="CVAE.load"><a class="viewcode-back" href="../../models.html#models.cvae.CVAE.load">[docs]</a>  <span class="nd">@classmethod</span>
+  <span class="k">def</span> <span class="nf">load</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">save_folder</span><span class="o">=</span><span class="s2">&quot;.&quot;</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Load an autoencoder from a saved folder&quot;&quot;&quot;</span>
+    
+    <span class="n">parameters_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">save_folder</span><span class="p">,</span> <span class="s2">&quot;parameters.pkl&quot;</span><span class="p">)</span>
+    <span class="n">weights_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">save_folder</span><span class="p">,</span> <span class="s2">&quot;weights.h5&quot;</span><span class="p">)</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">parameters_path</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+      <span class="n">parameters</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+    <span class="n">vae</span> <span class="o">=</span> <span class="n">CVAE</span><span class="p">(</span><span class="o">*</span><span class="n">parameters</span><span class="p">)</span>
+    <span class="n">vae</span><span class="o">.</span><span class="n">load_weights</span><span class="p">(</span><span class="n">weights_path</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">vae</span></div>
+  
+  <span class="k">def</span> <span class="nf">_calculate_combined_loss</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">y_target</span><span class="p">,</span> <span class="n">y_predicted</span><span class="p">):</span>
+    <span class="n">reconstruction_loss</span> <span class="o">=</span> <span class="n">calculate_reconstruction_loss</span><span class="p">(</span><span class="n">y_target</span><span class="p">,</span> <span class="n">y_predicted</span><span class="p">)</span>
+    <span class="n">kl_loss</span> <span class="o">=</span> <span class="n">calculate_kl_loss</span><span class="p">(</span><span class="bp">self</span><span class="p">)()</span>
+    <span class="n">combined_loss</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reconstruction_loss_weight</span> <span class="o">*</span> <span class="n">reconstruction_loss</span> <span class="o">+</span> <span class="n">kl_loss</span>
+    <span class="k">return</span> <span class="n">combined_loss</span>
+    
+  <span class="k">def</span> <span class="nf">_create_folder</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">folder</span><span class="p">):</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">folder</span><span class="p">):</span>
+      <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">folder</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">_save_parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">folder</span><span class="p">):</span>
+    <span class="n">parameters</span> <span class="o">=</span> <span class="p">[</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">input_shape</span><span class="p">,</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">conv_filters</span><span class="p">,</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">conv_kernels</span><span class="p">,</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">conv_strides</span><span class="p">,</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">latent_space_dim</span>
+    <span class="p">]</span>
+
+    <span class="c1"># Dump into a pickle file</span>
+    <span class="n">save_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">folder</span><span class="p">,</span> <span class="s2">&quot;parameters.pkl&quot;</span><span class="p">)</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">save_path</span><span class="p">,</span> <span class="s2">&quot;wb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+      <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">parameters</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">_save_weights</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">folder</span><span class="p">):</span>
+    <span class="n">save_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">folder</span><span class="p">,</span> <span class="s2">&quot;weights.h5&quot;</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">save_weights</span><span class="p">(</span><span class="n">save_path</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">_build</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_build_encoder</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_build_decoder</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_build_vae</span><span class="p">()</span>
+
+  <span class="k">def</span> <span class="nf">_build_vae</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Link together encoder and decoder (encoder is the input to the decoder).&quot;&quot;&quot;</span>
+    <span class="n">model_input</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model_input</span>
+    <span class="n">model_output</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">decoder</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">encoder</span><span class="p">(</span><span class="n">model_input</span><span class="p">))</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">Model</span><span class="p">(</span><span class="n">model_input</span><span class="p">,</span> <span class="n">model_output</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;vae&quot;</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">_build_decoder</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="c1"># Input layer</span>
+    <span class="n">decoder_input</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_add_decoder_input</span><span class="p">()</span>
+
+    <span class="c1"># Add dense layer with flattened shape before bottleneck</span>
+    <span class="n">dense_layer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_add_dense_layer</span><span class="p">(</span><span class="n">decoder_input</span><span class="p">)</span>
+
+    <span class="c1"># Reshape model to get encoder shape before bottleneck</span>
+    <span class="n">reshape_layer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_add_reshape_layer</span><span class="p">(</span><span class="n">dense_layer</span><span class="p">)</span>
+
+    <span class="c1"># Add all the conv transpose blocks in the reverse order of the encoder</span>
+    <span class="n">conv_transpose_layers</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_add_conv_transpose_layers</span><span class="p">(</span><span class="n">reshape_layer</span><span class="p">)</span>
+
+    <span class="c1"># Add the last conv transpose layer and the output activation layer</span>
+    <span class="n">decoder_output</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_add_decoder_output</span><span class="p">(</span><span class="n">conv_transpose_layers</span><span class="p">)</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">decoder</span> <span class="o">=</span> <span class="n">Model</span><span class="p">(</span><span class="n">decoder_input</span><span class="p">,</span> <span class="n">decoder_output</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;decoder&quot;</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">_add_decoder_input</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">Input</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">latent_space_dim</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;decoder_input&quot;</span><span class="p">)</span>
+  
+  <span class="k">def</span> <span class="nf">_add_dense_layer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">decoder_input</span><span class="p">):</span>
+    <span class="c1"># 3D array [width, height, num_channels] -&gt; 1D array</span>
+    <span class="n">num_neurons</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">prod</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_shape_before_bottleneck</span><span class="p">)</span>
+    <span class="n">dense_layer</span> <span class="o">=</span> <span class="n">Dense</span><span class="p">(</span><span class="n">num_neurons</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;decoder_dense&quot;</span><span class="p">)(</span><span class="n">decoder_input</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">dense_layer</span>
+  
+  <span class="k">def</span> <span class="nf">_add_reshape_layer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dense_layer</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">Reshape</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_shape_before_bottleneck</span><span class="p">)(</span><span class="n">dense_layer</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">_add_conv_transpose_layers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">arch</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Adds convolutional transpose blocks&quot;&quot;&quot;</span>
+    
+    <span class="c1"># loop through all the conv layers in reverse order and stop at the first layer</span>
+    <span class="k">for</span> <span class="n">layer_idx</span> <span class="ow">in</span> <span class="nb">reversed</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_conv_layers</span><span class="p">)):</span>
+      <span class="c1"># [layer_A, layer_B, layer_C] -&gt; [layer_C, layer_B]</span>
+      <span class="n">arch</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_add_conv_transpose_layer</span><span class="p">(</span><span class="n">arch</span><span class="p">,</span> <span class="n">layer_idx</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">arch</span>
+  
+  <span class="k">def</span> <span class="nf">_add_conv_transpose_layer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">arch</span><span class="p">,</span> <span class="n">layer_idx</span><span class="p">):</span>
+    <span class="c1"># The conv transpose layer number for the decoder is the reverse of the encoder</span>
+    <span class="n">layer_num</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_conv_layers</span> <span class="o">-</span> <span class="n">layer_idx</span>
+
+    <span class="c1"># Add conv transpose layer</span>
+    <span class="n">conv_transpose_layer</span> <span class="o">=</span> <span class="n">Conv2DTranspose</span><span class="p">(</span>
+      <span class="n">filters</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">conv_filters</span><span class="p">[</span><span class="n">layer_idx</span><span class="p">],</span>
+      <span class="n">kernel_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">conv_kernels</span><span class="p">[</span><span class="n">layer_idx</span><span class="p">],</span>
+      <span class="n">strides</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">conv_strides</span><span class="p">[</span><span class="n">layer_idx</span><span class="p">],</span>
+      <span class="n">padding</span><span class="o">=</span><span class="s2">&quot;same&quot;</span><span class="p">,</span>
+      <span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;decoder_conv_transpose_layer_</span><span class="si">{</span><span class="n">layer_num</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="p">)</span>
+    <span class="n">arch</span> <span class="o">=</span> <span class="n">conv_transpose_layer</span><span class="p">(</span><span class="n">arch</span><span class="p">)</span>
+
+    <span class="c1"># Add ReLU layer</span>
+    <span class="n">arch</span> <span class="o">=</span> <span class="n">ReLU</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;decoder_relu_</span><span class="si">{</span><span class="n">layer_num</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)(</span><span class="n">arch</span><span class="p">)</span>
+
+    <span class="c1"># Add Batch Normalization layer</span>
+    <span class="n">arch</span> <span class="o">=</span> <span class="n">BatchNormalization</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;decoder_bn_</span><span class="si">{</span><span class="n">layer_num</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)(</span><span class="n">arch</span><span class="p">)</span>
+                                                              
+    <span class="k">return</span> <span class="n">arch</span>
+
+  <span class="k">def</span> <span class="nf">_add_decoder_output</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">arch</span><span class="p">):</span>
+    <span class="c1"># Add last conv transpose layer</span>
+    <span class="n">conv_transpose_layer</span> <span class="o">=</span> <span class="n">Conv2DTranspose</span><span class="p">(</span>
+        <span class="c1"># [width, height, num_channels] coincide with encoder input</span>
+        <span class="n">filters</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> 
+        <span class="n">kernel_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">conv_kernels</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+        <span class="n">strides</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">conv_strides</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+        <span class="n">padding</span><span class="o">=</span><span class="s2">&quot;same&quot;</span><span class="p">,</span>
+        <span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;decoder_conv_transpose_layer_</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_num_conv_layers</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="p">)</span>
+    <span class="n">arch</span> <span class="o">=</span> <span class="n">conv_transpose_layer</span><span class="p">(</span><span class="n">arch</span><span class="p">)</span>
+
+    <span class="c1"># Add last activation layer</span>
+    <span class="n">output_layer</span> <span class="o">=</span> <span class="n">Activation</span><span class="p">(</span><span class="s2">&quot;sigmoid&quot;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;sigmoid_layer&quot;</span><span class="p">)</span>
+    <span class="n">arch</span> <span class="o">=</span> <span class="n">output_layer</span><span class="p">(</span><span class="n">arch</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">arch</span>
+
+  <span class="k">def</span> <span class="nf">_build_encoder</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="c1"># Create a basic architecture consisting of just the input layer</span>
+    <span class="n">encoder_input</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_add_encoder_input</span><span class="p">()</span> 
+    <span class="bp">self</span><span class="o">.</span><span class="n">_model_input</span> <span class="o">=</span> <span class="n">encoder_input</span>
+
+    <span class="c1"># Add the specified number of convolutional layers to the existing input layer</span>
+    <span class="n">conv_layers</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_add_conv_layers</span><span class="p">(</span><span class="n">encoder_input</span><span class="p">)</span>
+
+    <span class="c1"># Add the final &quot;output&quot; of the encoder, the bottleneck</span>
+    <span class="n">bottleneck</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_add_bottleneck</span><span class="p">(</span><span class="n">conv_layers</span><span class="p">)</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">encoder</span> <span class="o">=</span> <span class="n">Model</span><span class="p">(</span><span class="n">inputs</span><span class="o">=</span><span class="n">encoder_input</span><span class="p">,</span> <span class="n">outputs</span><span class="o">=</span><span class="n">bottleneck</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;encoder&quot;</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">_add_encoder_input</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">Input</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">input_shape</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;encoder_input&quot;</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">_add_conv_layers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">encoder_input</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Create convolutional layers for the encoder&quot;&quot;&quot;</span>
+    
+    <span class="n">arch</span> <span class="o">=</span> <span class="n">encoder_input</span>
+
+    <span class="c1"># Add one layer at a time to the existing architecture</span>
+    <span class="k">for</span> <span class="n">layer_idx</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_num_conv_layers</span><span class="p">):</span>
+      <span class="n">arch</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_add_conv_layer</span><span class="p">(</span><span class="n">layer_idx</span><span class="p">,</span> <span class="n">arch</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">arch</span>
+  
+  <span class="k">def</span> <span class="nf">_add_conv_layer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">layer_index</span><span class="p">,</span> <span class="n">arch</span><span class="p">):</span>
+    <span class="n">layer_num</span> <span class="o">=</span> <span class="n">layer_index</span> <span class="o">+</span> <span class="mi">1</span>
+
+    <span class="c1"># Create a convolutional layer</span>
+    <span class="n">conv_layer</span> <span class="o">=</span> <span class="n">Conv2D</span><span class="p">(</span>
+      <span class="n">filters</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">conv_filters</span><span class="p">[</span><span class="n">layer_index</span><span class="p">],</span>
+      <span class="n">kernel_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">conv_kernels</span><span class="p">[</span><span class="n">layer_index</span><span class="p">],</span>
+      <span class="n">strides</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">conv_strides</span><span class="p">[</span><span class="n">layer_index</span><span class="p">],</span>
+      <span class="n">padding</span><span class="o">=</span><span class="s2">&quot;same&quot;</span><span class="p">,</span>
+      <span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s1">&#39;encoder_conv_layer_</span><span class="si">{</span><span class="n">layer_num</span><span class="si">}</span><span class="s1">&#39;</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Apply the new layer to the existing architecture</span>
+    <span class="n">arch</span> <span class="o">=</span> <span class="n">conv_layer</span><span class="p">(</span><span class="n">arch</span><span class="p">)</span>
+
+    <span class="c1"># Create a ReLU layer and add to existing block</span>
+    <span class="n">arch</span> <span class="o">=</span> <span class="n">ReLU</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s1">&#39;encoder_relu_</span><span class="si">{</span><span class="n">layer_num</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)(</span><span class="n">arch</span><span class="p">)</span>
+
+    <span class="c1"># Create a batch normalization and apply it to the block</span>
+    <span class="n">arch</span> <span class="o">=</span> <span class="n">BatchNormalization</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s1">&#39;encoder_bn_</span><span class="si">{</span><span class="n">layer_num</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)(</span><span class="n">arch</span><span class="p">)</span>
+
+    <span class="c1"># Return the architecture with an additional conv block</span>
+    <span class="k">return</span> <span class="n">arch</span>
+
+  <span class="k">def</span> <span class="nf">_add_bottleneck</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">arch</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Flatten the data, add a bottleneck with Gaussian sampling to the architecture&quot;&quot;&quot;</span>
+    
+    <span class="c1"># Store the info about the flattened model for the decoder</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_shape_before_bottleneck</span> <span class="o">=</span> <span class="n">K</span><span class="o">.</span><span class="n">int_shape</span><span class="p">(</span><span class="n">arch</span><span class="p">)[</span><span class="mi">1</span><span class="p">:]</span> <span class="c1"># [batch size, width, height, num_channels]</span>
+
+    <span class="c1"># Flatten model and create layers for mean and variance</span>
+    <span class="n">arch</span> <span class="o">=</span> <span class="n">Flatten</span><span class="p">()(</span><span class="n">arch</span><span class="p">)</span>
+    
+    <span class="c1"># NOTE: we no longer have a sequential model, the architecture branches out</span>
+    <span class="c1"># into the mean layer and the log variance layer</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">mu</span> <span class="o">=</span> <span class="n">Dense</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">latent_space_dim</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;mu&quot;</span><span class="p">)(</span><span class="n">arch</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">log_variance</span> <span class="o">=</span> <span class="n">Dense</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">latent_space_dim</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;log_variance&quot;</span><span class="p">)(</span><span class="n">arch</span><span class="p">)</span>
+    
+    <span class="c1"># Define the function for the lambda layer</span>
+    <span class="k">def</span> <span class="nf">sample_point_normal</span><span class="p">(</span><span class="n">args</span><span class="p">):</span>
+      <span class="n">mu</span><span class="p">,</span> <span class="n">log_variance</span> <span class="o">=</span> <span class="n">args</span>
+      
+      <span class="c1"># Sample a point from a standard normal distribution</span>
+      <span class="n">epsilon</span> <span class="o">=</span> <span class="n">K</span><span class="o">.</span><span class="n">random_normal</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="n">K</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mu</span><span class="p">),</span> <span class="n">mean</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">stddev</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+      
+      <span class="c1"># The equation for sampling a point is:</span>
+      <span class="c1">#</span>
+      <span class="c1"># z = \mu + \Sigma * \epsilon </span>
+      <span class="c1">#</span>
+      <span class="c1"># where \Sigma = exp((log_variance) / 2)</span>
+      <span class="n">sampled_point</span> <span class="o">=</span> <span class="n">mu</span> <span class="o">+</span> <span class="n">K</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">log_variance</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="n">epsilon</span>
+      <span class="k">return</span> <span class="n">sampled_point</span>
+    
+    <span class="c1"># Connect mean and log variance again by sampling a point from a normal </span>
+    <span class="c1"># distribution</span>
+    <span class="n">arch</span> <span class="o">=</span> <span class="n">Lambda</span><span class="p">(</span>
+      <span class="n">sample_point_normal</span><span class="p">,</span> 
+      <span class="n">name</span><span class="o">=</span><span class="s2">&quot;encoder_output&quot;</span><span class="p">)([</span><span class="bp">self</span><span class="o">.</span><span class="n">mu</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">log_variance</span><span class="p">])</span>
+    
+    <span class="k">return</span> <span class="n">arch</span></div>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Jackson Howe.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

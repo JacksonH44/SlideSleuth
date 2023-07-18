@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>models.vae &mdash; SlideSleuth  documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script src="../../_static/sphinx_highlight.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            SlideSleuth
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../modules.html">src</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">SlideSleuth</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">models.vae</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for models.vae</h1><div class="highlight"><pre>
+<span></span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">  A simple variational autoencoder (not convolutional) meant to reduce</span>
+<span class="sd">  dimension of a 1D feature vector as input.</span>
+<span class="sd">  </span>
+<span class="sd">  Note: https://towardsdatascience.com/build-the-right-autoencoder-tune-and-optimize-using-pca-principles-part-ii-24b9cca69bd6 could be interesting for optimizations</span>
+<span class="sd">  </span>
+<span class="sd">  Author: Jackson Howe</span>
+<span class="sd">  Date Created: June 20, 2023</span>
+<span class="sd">  Last Updated: July 5, 2023</span>
+<span class="sd">&#39;&#39;&#39;</span>
+<span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<span class="kn">import</span> <span class="nn">tensorflow.keras.backend</span> <span class="k">as</span> <span class="nn">K</span>
+<span class="kn">from</span> <span class="nn">tensorflow.keras.layers</span> <span class="kn">import</span> <span class="n">Input</span><span class="p">,</span> <span class="n">Dense</span><span class="p">,</span> <span class="n">Lambda</span><span class="p">,</span> <span class="n">BatchNormalization</span>
+<span class="kn">from</span> <span class="nn">tensorflow.keras.models</span> <span class="kn">import</span> <span class="n">Model</span>
+<span class="kn">from</span> <span class="nn">keras.optimizers</span> <span class="kn">import</span> <span class="n">Adam</span>
+<span class="kn">from</span> <span class="nn">keras.constraints</span> <span class="kn">import</span> <span class="n">Constraint</span>
+<span class="kn">from</span> <span class="nn">os</span> <span class="kn">import</span> <span class="n">listdir</span>
+<span class="kn">from</span> <span class="nn">os.path</span> <span class="kn">import</span> <span class="n">join</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">pickle</span>
+
+<span class="n">tf</span><span class="o">.</span><span class="n">compat</span><span class="o">.</span><span class="n">v1</span><span class="o">.</span><span class="n">disable_eager_execution</span><span class="p">()</span>
+<span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s1">&#39;TF_CPP_MIN_LOG_LEVEL&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;2&#39;</span>
+
+<span class="n">LATENT_SPACE_DIM</span> <span class="o">=</span> <span class="mi">100</span> <span class="c1"># Dimension of the latent space</span>
+<span class="n">TRAIN_DIR</span> <span class="o">=</span> <span class="s1">&#39;../outputs/HNE_features/train&#39;</span>
+<span class="n">TEST_DIR</span> <span class="o">=</span> <span class="s1">&#39;../outputs/HNE_features/test&#39;</span>
+
+<span class="n">BATCH_SIZE</span> <span class="o">=</span> <span class="mi">256</span>
+<span class="n">NUM_EPOCHS</span> <span class="o">=</span> <span class="mi">50</span>
+
+<div class="viewcode-block" id="UncorrelatedFeaturesConstraint"><a class="viewcode-back" href="../../models.html#models.vae.UncorrelatedFeaturesConstraint">[docs]</a><span class="k">class</span> <span class="nc">UncorrelatedFeaturesConstraint</span> <span class="p">(</span><span class="n">Constraint</span><span class="p">):</span>
+<span class="w">  </span><span class="sd">&quot;&quot;&quot;A class from https://towardsdatascience.com/build-the-right-autoencoder-tune-and-optimize-using-pca-principles-part-ii-24b9cca69bd6. For uncorrelated features, impose a penalty on the sum of the off-diagonal elements of the encoded features covariance.</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+  <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">encoding_dim</span><span class="p">,</span> <span class="n">weightage</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">encoding_dim</span> <span class="o">=</span> <span class="n">encoding_dim</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">weightage</span> <span class="o">=</span> <span class="n">weightage</span>
+    
+<div class="viewcode-block" id="UncorrelatedFeaturesConstraint.get_covariance"><a class="viewcode-back" href="../../models.html#models.vae.UncorrelatedFeaturesConstraint.get_covariance">[docs]</a>  <span class="k">def</span> <span class="nf">get_covariance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+    <span class="n">x_centered_list</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">encoding_dim</span><span class="p">):</span>
+      <span class="n">x_centered_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">x</span><span class="p">[:,</span> <span class="n">i</span><span class="p">]</span> <span class="o">-</span> <span class="n">K</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">x</span><span class="p">[:,</span> <span class="n">i</span><span class="p">]))</span>
+        
+      <span class="n">x_centered</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">x_centered_list</span><span class="p">)</span>
+      <span class="n">covariance</span> <span class="o">=</span> <span class="n">K</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">x_centered</span><span class="p">,</span> <span class="n">K</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="n">x_centered</span><span class="p">))</span> <span class="o">/</span> <span class="n">tf</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="n">x_centered</span><span class="o">.</span><span class="n">get_shape</span><span class="p">()[</span><span class="mi">0</span><span class="p">],</span> <span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+        
+      <span class="k">return</span> <span class="n">covariance</span></div>
+            
+  <span class="c1"># Constraint penalty</span>
+<div class="viewcode-block" id="UncorrelatedFeaturesConstraint.uncorrelated_feature"><a class="viewcode-back" href="../../models.html#models.vae.UncorrelatedFeaturesConstraint.uncorrelated_feature">[docs]</a>  <span class="k">def</span> <span class="nf">uncorrelated_feature</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+    <span class="k">if</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">encoding_dim</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">):</span>
+      <span class="k">return</span> <span class="mf">0.0</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="n">output</span> <span class="o">=</span> <span class="n">K</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">K</span><span class="o">.</span><span class="n">square</span><span class="p">(</span>
+          <span class="bp">self</span><span class="o">.</span><span class="n">covariance</span> <span class="o">-</span> <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">covariance</span><span class="p">,</span> <span class="n">K</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">encoding_dim</span><span class="p">))))</span>
+      <span class="k">return</span> <span class="n">output</span></div>
+
+  <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">covariance</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_covariance</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">weightage</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">uncorrelated_feature</span><span class="p">(</span><span class="n">x</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="load_csv_files"><a class="viewcode-back" href="../../models.html#models.vae.load_csv_files">[docs]</a><span class="k">def</span> <span class="nf">load_csv_files</span><span class="p">(</span><span class="n">directory</span><span class="p">):</span>
+<span class="w">  </span><span class="sd">&quot;&quot;&quot;A function that transforms csv files into a numpy array for vae training</span>
+
+<span class="sd">  Args:</span>
+<span class="sd">      directory (String): path to the root directory holding all the feature </span>
+<span class="sd">      csv files</span>
+
+<span class="sd">  Returns:</span>
+<span class="sd">      np.ndarray: A numpy array of each training observation</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+  
+  <span class="c1"># Get filenames of all feature files</span>
+  <span class="n">all_files</span> <span class="o">=</span> <span class="p">[]</span>
+  <span class="k">for</span> <span class="n">file</span> <span class="ow">in</span> <span class="n">listdir</span><span class="p">(</span><span class="n">directory</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">mag</span> <span class="ow">in</span> <span class="n">listdir</span><span class="p">(</span><span class="n">join</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="n">file</span><span class="p">)):</span>
+      <span class="k">for</span> <span class="n">feature</span> <span class="ow">in</span> <span class="n">listdir</span><span class="p">(</span><span class="n">join</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="n">file</span><span class="p">,</span> <span class="n">mag</span><span class="p">)):</span>
+        <span class="n">all_files</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">join</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="n">file</span><span class="p">,</span> <span class="n">mag</span><span class="p">,</span> <span class="n">feature</span><span class="p">))</span>
+        
+  <span class="n">data</span> <span class="o">=</span> <span class="p">[]</span>
+  
+  <span class="c1"># Concatenate into a list of numpy arrays</span>
+  <span class="k">for</span> <span class="n">file</span> <span class="ow">in</span> <span class="n">all_files</span><span class="p">:</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+    <span class="n">data</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>
+    
+  <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="calculate_reconstruction_loss"><a class="viewcode-back" href="../../models.html#models.vae.calculate_reconstruction_loss">[docs]</a><span class="k">def</span> <span class="nf">calculate_reconstruction_loss</span><span class="p">(</span><span class="n">y_target</span><span class="p">,</span> <span class="n">y_predicted</span><span class="p">):</span>
+<span class="w">  </span><span class="sd">&quot;&quot;&quot;A function that calculates the reconstruction part of the loss function</span>
+
+<span class="sd">  Args:</span>
+<span class="sd">      y_target (np.array): An array of values that represents the ground truth </span>
+<span class="sd">      vector</span>
+<span class="sd">      y_predicted (np.array): An array of values that represents the predicted </span>
+<span class="sd">      vector</span>
+
+<span class="sd">  Returns:</span>
+<span class="sd">      Integer: The reconstruction loss value</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+  <span class="n">error</span> <span class="o">=</span> <span class="n">y_target</span> <span class="o">-</span> <span class="n">y_predicted</span>
+  <span class="n">reconstruction_loss</span> <span class="o">=</span> <span class="n">K</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">K</span><span class="o">.</span><span class="n">square</span><span class="p">(</span><span class="n">error</span><span class="p">))</span>
+  <span class="k">return</span> <span class="n">reconstruction_loss</span></div>
+
+<div class="viewcode-block" id="calculate_kl_loss"><a class="viewcode-back" href="../../models.html#models.vae.calculate_kl_loss">[docs]</a><span class="k">def</span> <span class="nf">calculate_kl_loss</span><span class="p">(</span><span class="n">model</span><span class="p">):</span>
+<span class="w">  </span><span class="sd">&quot;&quot;&quot;Calculate the Kullback-Leibler divergence part of the loss function.</span>
+
+<span class="sd">  Args:</span>
+<span class="sd">      model (tf.keras.models.Model): The model you want to compute loss for</span>
+
+<span class="sd">  Returns:</span>
+<span class="sd">      &lt;tf.Tensor&gt;: A tensor representing the KL loss</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+  <span class="c1"># wrap &#39;_calculate_kl_loss&#39; such that it takes the model as an argument,</span>
+  <span class="c1"># returns a function which can take arbitrary number of arguments</span>
+  <span class="c1"># (for compatibility with &#39;metrics&#39; and utility in loss function)</span>
+  <span class="c1"># and returns the kl loss</span>
+  <span class="c1"># Reference: https://stackoverflow.com/questions/73981914/tensorflow-attribute-error-method-object-has-no-attribute-from-serialized</span>
+  <span class="k">def</span> <span class="nf">_calculate_kl_loss</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">):</span>
+    <span class="c1"># D_KL = 1/2 * \Sigma {1 + log_variance - \mu - \sigma}</span>
+    <span class="n">kl_loss</span> <span class="o">=</span> <span class="o">-</span><span class="mf">0.5</span> <span class="o">*</span> <span class="n">K</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">model</span><span class="o">.</span><span class="n">log_variance</span> <span class="o">-</span>
+                           <span class="n">K</span><span class="o">.</span><span class="n">square</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">mu</span><span class="p">)</span> <span class="o">-</span> <span class="n">K</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">log_variance</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">kl_loss</span>
+  <span class="k">return</span> <span class="n">_calculate_kl_loss</span></div>
+
+<div class="viewcode-block" id="VAE"><a class="viewcode-back" href="../../models.html#models.vae.VAE">[docs]</a><span class="k">class</span> <span class="nc">VAE</span><span class="p">:</span>
+<span class="w">  </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    VAE represents a deep variational autoencoder architecture</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+  <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">input_shape</span><span class="p">,</span> <span class="n">latent_space_dim</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Constructor</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        input_shape (Tuple): A tuple representing the shape of the input to the </span>
+<span class="sd">        model</span>
+<span class="sd">        latent_space_dim (Integer): The dimension of the bottleneck in the model</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">input_shape</span> <span class="o">=</span> <span class="n">input_shape</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">latent_space_dim</span> <span class="o">=</span> <span class="n">latent_space_dim</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">reconstruction_loss_weight</span> <span class="o">=</span> <span class="mi">1000</span>
+    
+    <span class="bp">self</span><span class="o">.</span><span class="n">encoder</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">decoder</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="kc">None</span>
+    
+    <span class="c1"># Private variable</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_model_input</span> <span class="o">=</span> <span class="kc">None</span>
+    
+    <span class="c1"># Build model</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_build</span><span class="p">()</span>
+    
+<div class="viewcode-block" id="VAE.summary"><a class="viewcode-back" href="../../models.html#models.vae.VAE.summary">[docs]</a>  <span class="k">def</span> <span class="nf">summary</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A public method that prints information about the architecture of the </span>
+<span class="sd">    model to the console</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">encoder</span><span class="o">.</span><span class="n">summary</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">decoder</span><span class="o">.</span><span class="n">summary</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">summary</span><span class="p">()</span></div>
+    
+<div class="viewcode-block" id="VAE.compile"><a class="viewcode-back" href="../../models.html#models.vae.VAE.compile">[docs]</a>  <span class="k">def</span> <span class="nf">compile</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">learning_rate</span><span class="o">=</span><span class="mf">1e-4</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Compile model before use</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        learning_rate (Integer, optional): The model learning rate. Defaults to </span>
+<span class="sd">        1e-3.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">optimizer</span> <span class="o">=</span> <span class="n">Adam</span><span class="p">(</span>
+      <span class="n">learning_rate</span><span class="o">=</span><span class="n">learning_rate</span><span class="p">,</span>
+      <span class="n">clipvalue</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
+    
+    <span class="c1"># Standardization + regularisation for the loss function</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span>
+      <span class="n">optimizer</span><span class="o">=</span><span class="n">optimizer</span><span class="p">,</span>
+      <span class="n">loss</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_calculate_combined_loss</span><span class="p">,</span>
+      <span class="n">metrics</span><span class="o">=</span><span class="p">[</span><span class="n">calculate_reconstruction_loss</span><span class="p">,</span> <span class="n">calculate_kl_loss</span><span class="p">(</span><span class="bp">self</span><span class="p">)]</span>
+    <span class="p">)</span></div>
+    
+<div class="viewcode-block" id="VAE.save"><a class="viewcode-back" href="../../models.html#models.vae.VAE.save">[docs]</a>  <span class="k">def</span> <span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">save_folder</span><span class="o">=</span><span class="s2">&quot;.&quot;</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Save the weights of a model</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        save_folder (str, optional): The path to the folder in which the model </span>
+<span class="sd">        weights will be saved. Defaults to the current working directory.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_create_folder</span><span class="p">(</span><span class="n">save_folder</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_save_weights</span><span class="p">(</span><span class="n">save_folder</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_save_parameters</span><span class="p">(</span><span class="n">save_folder</span><span class="p">)</span></div>
+    
+<div class="viewcode-block" id="VAE.train"><a class="viewcode-back" href="../../models.html#models.vae.VAE.train">[docs]</a>  <span class="k">def</span> <span class="nf">train</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X_train</span><span class="p">,</span> <span class="n">batch_size</span><span class="p">,</span> <span class="n">num_epochs</span><span class="p">,</span> <span class="n">validation_data</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A function that trains the model</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        X_train (np.array): The training set for the model</span>
+<span class="sd">        batch_size (Integer): Batch size</span>
+<span class="sd">        num_epochs (Integer): Number of full training epochs</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Create an early stopping callback based on reconstruction loss</span>
+    <span class="n">early_stopping</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">callbacks</span><span class="o">.</span><span class="n">EarlyStopping</span><span class="p">(</span>
+      <span class="n">monitor</span><span class="o">=</span><span class="s1">&#39;val_calculate_reconstruction_loss&#39;</span><span class="p">,</span>
+      <span class="n">verbose</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+      <span class="n">patience</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+      <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;min&#39;</span><span class="p">,</span>
+      <span class="n">restore_best_weights</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+      
+    <span class="c1"># Fit the model</span>
+    <span class="n">history</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span>
+      <span class="n">X_train</span><span class="p">,</span>
+      <span class="n">X_train</span><span class="p">,</span> 
+      <span class="n">batch_size</span><span class="o">=</span><span class="n">batch_size</span><span class="p">,</span>
+      <span class="n">epochs</span><span class="o">=</span><span class="n">num_epochs</span><span class="p">,</span>
+      <span class="n">callbacks</span><span class="o">=</span><span class="p">[</span><span class="n">early_stopping</span><span class="p">],</span>
+      <span class="n">validation_data</span><span class="o">=</span><span class="p">(</span><span class="n">validation_data</span><span class="p">,</span> <span class="n">validation_data</span><span class="p">),</span>
+      <span class="n">verbose</span><span class="o">=</span><span class="mi">1</span> 
+    <span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">history</span></div>
+    
+<div class="viewcode-block" id="VAE.load_weights"><a class="viewcode-back" href="../../models.html#models.vae.VAE.load_weights">[docs]</a>  <span class="k">def</span> <span class="nf">load_weights</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">weights_path</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Load trained weights from a model</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        weights_path (str): Path to the model weights</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">load_weights</span><span class="p">(</span><span class="n">weights_path</span><span class="p">)</span></div>
+    
+<div class="viewcode-block" id="VAE.load"><a class="viewcode-back" href="../../models.html#models.vae.VAE.load">[docs]</a>  <span class="nd">@classmethod</span>
+  <span class="k">def</span> <span class="nf">load</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">save_folder</span><span class="o">=</span><span class="s2">&quot;.&quot;</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A method that loads weights for a variational autoencoder</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        save_folder (str, optional): The path to the folder to load weights </span>
+<span class="sd">        from. Defaults to current working directory.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">parameters_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">save_folder</span><span class="p">,</span> <span class="s2">&quot;parameters.pkl&quot;</span><span class="p">)</span>
+    <span class="n">weights_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">save_folder</span><span class="p">,</span> <span class="s2">&quot;weights.h5&quot;</span><span class="p">)</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">parameters_path</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+      <span class="n">parameters</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+    
+    <span class="c1"># Build the VAE from the parameters</span>
+    <span class="n">vae</span> <span class="o">=</span> <span class="n">VAE</span><span class="p">(</span><span class="o">*</span><span class="n">parameters</span><span class="p">)</span>
+    <span class="n">vae</span><span class="o">.</span><span class="n">load_weights</span><span class="p">(</span><span class="n">weights_path</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">vae</span></div>
+    
+  <span class="k">def</span> <span class="nf">_create_folder</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">folder</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Create a folder if it doesn&#39;t exist</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        folder (String): Path to the folder</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">folder</span><span class="p">):</span>
+      <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">folder</span><span class="p">)</span>
+      
+  <span class="k">def</span> <span class="nf">_save_weights</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">folder</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Save trained weights of a model</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        folder (str): Path to folder to save weights to</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">save_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">folder</span><span class="p">,</span> <span class="s2">&quot;weights.h5&quot;</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">save_weights</span><span class="p">(</span><span class="n">save_path</span><span class="p">)</span>
+    
+  <span class="k">def</span> <span class="nf">_save_parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">folder</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Save parameters for a model</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        folder (str): Path to parameter folder</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">parameters</span> <span class="o">=</span> <span class="p">[</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">input_shape</span><span class="p">,</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">latent_space_dim</span>
+    <span class="p">]</span>
+    
+    <span class="c1"># Dump into a pickle file</span>
+    <span class="n">save_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">folder</span><span class="p">,</span> <span class="s2">&quot;parameters.pkl&quot;</span><span class="p">)</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">save_path</span><span class="p">,</span> <span class="s2">&quot;wb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+      <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">parameters</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span>
+    
+  <span class="k">def</span> <span class="nf">_calculate_combined_loss</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">y_target</span><span class="p">,</span> <span class="n">y_predicted</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Custom VAE loss function consisting of the reconstruction loss and </span>
+<span class="sd">    KL-Divergence</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        y_target (np.array): Ground truth data in vector format</span>
+<span class="sd">        y_predicted (np.array): Predicted data in vector format</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">reconstruction_loss</span> <span class="o">=</span> <span class="n">calculate_reconstruction_loss</span><span class="p">(</span><span class="n">y_target</span><span class="p">,</span> <span class="n">y_predicted</span><span class="p">)</span>
+    <span class="n">kl_loss</span> <span class="o">=</span> <span class="n">calculate_kl_loss</span><span class="p">(</span><span class="bp">self</span><span class="p">)()</span>
+    <span class="n">combined_loss</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reconstruction_loss_weight</span> <span class="o">*</span> <span class="n">reconstruction_loss</span> <span class="o">+</span> <span class="n">kl_loss</span>
+    <span class="k">return</span> <span class="n">combined_loss</span>
+    
+  <span class="k">def</span> <span class="nf">_build</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Three-step model building</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_build_encoder</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_build_decoder</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_build_vae</span><span class="p">()</span>
+    
+  <span class="k">def</span> <span class="nf">_build_vae</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Link together encoder and decoder (encoder is the input to the decoder)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">model_input</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model_input</span>
+    <span class="n">model_output</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">decoder</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">encoder</span><span class="p">(</span><span class="n">model_input</span><span class="p">))</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">Model</span><span class="p">(</span><span class="n">model_input</span><span class="p">,</span> <span class="n">model_output</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;vae&quot;</span><span class="p">)</span>
+    
+  <span class="k">def</span> <span class="nf">_build_decoder</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A function that builds the decoder layer by layer</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">decoder_input</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_add_decoder_input</span><span class="p">()</span>
+    
+    <span class="c1"># Add dense layers</span>
+    <span class="n">dense_layers</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_add_decoder_dense_layers</span><span class="p">(</span><span class="n">decoder_input</span><span class="p">)</span>
+    
+    <span class="c1"># Add decoder output classification layer</span>
+    <span class="n">decoder_output</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_add_decoder_output</span><span class="p">(</span><span class="n">dense_layers</span><span class="p">)</span>
+    
+    <span class="c1"># Create the decoder</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">decoder</span> <span class="o">=</span> <span class="n">Model</span><span class="p">(</span>
+      <span class="n">decoder_input</span><span class="p">,</span> 
+      <span class="n">decoder_output</span><span class="p">,</span> 
+      <span class="n">name</span><span class="o">=</span><span class="s2">&quot;decoder&quot;</span>
+    <span class="p">)</span>
+    
+  <span class="k">def</span> <span class="nf">_add_decoder_input</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Create an input layer with the latent space dimension</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        tf.keras.layer.Input: The decoder input layer</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">Input</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">latent_space_dim</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;decoder_input&quot;</span><span class="p">)</span>
+  
+  <span class="k">def</span> <span class="nf">_add_decoder_dense_layers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">decoder_input</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Add the dense layers that make up the decoder</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        decoder_input (tf.keras.layer.Input): The decoder input layer from the </span>
+<span class="sd">        encoder bottleneck</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">decoder_input</span>
+    
+    <span class="c1"># First layer of decoder (corresponds to third layer of encoder)</span>
+    <span class="c1"># x = Dense(</span>
+    <span class="c1">#   32,</span>
+    <span class="c1">#   activation=&#39;relu&#39;,</span>
+    <span class="c1">#   name=&#39;decoder_dense_3&#39;</span>
+    <span class="c1"># )(x)</span>
+    
+    <span class="c1"># Second layer of decoder (corresponds to second layer of encoder)</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">Dense</span><span class="p">(</span>
+      <span class="mi">256</span><span class="p">,</span>
+      <span class="n">activation</span><span class="o">=</span><span class="s1">&#39;relu&#39;</span><span class="p">,</span>
+      <span class="n">name</span><span class="o">=</span><span class="s1">&#39;decoder_dense_2&#39;</span>
+    <span class="p">)(</span><span class="n">x</span><span class="p">)</span>
+    
+    <span class="c1"># Third layer of decoder (corresponds to first layer of encoder)</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">Dense</span><span class="p">(</span>
+      <span class="mi">1024</span><span class="p">,</span>
+      <span class="n">activation</span><span class="o">=</span><span class="s1">&#39;relu&#39;</span><span class="p">,</span>
+      <span class="n">name</span><span class="o">=</span><span class="s1">&#39;decoder_dense_1&#39;</span>
+    <span class="p">)(</span><span class="n">x</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">x</span>
+  
+  <span class="k">def</span> <span class="nf">_add_decoder_output</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dense_layers</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Adds the outer classification layer for the decoder</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        dense_layers (tf.keras.layer.Dense): The decoder architecture without the outer classification layer</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">dense_layers</span>
+    
+    <span class="c1"># Get the input shape (assuming the shape is [features,])</span>
+    <span class="n">input_dim</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">Dense</span><span class="p">(</span><span class="n">input_dim</span><span class="p">,</span> <span class="n">activation</span><span class="o">=</span><span class="s1">&#39;sigmoid&#39;</span><span class="p">)(</span><span class="n">x</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">x</span>
+    
+  <span class="k">def</span> <span class="nf">_build_encoder</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A function that builds the encoder part of the VAE layer by layer</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Save the input layer in a variable to use for final model building</span>
+    <span class="n">encoder_input</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_add_encoder_input</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_model_input</span> <span class="o">=</span> <span class="n">encoder_input</span>
+    
+    <span class="c1"># Can change/play around with this architecture</span>
+    <span class="n">dense_layers</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_add_encoder_dense_layers</span><span class="p">(</span><span class="n">encoder_input</span><span class="p">)</span>
+    
+    <span class="c1"># Add the bottleneck, can change dimension in constructor</span>
+    <span class="n">bottleneck</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_add_bottleneck</span><span class="p">(</span><span class="n">dense_layers</span><span class="p">)</span>
+    
+    <span class="c1"># Create the encoder</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">encoder</span> <span class="o">=</span> <span class="n">Model</span><span class="p">(</span>
+      <span class="n">inputs</span><span class="o">=</span><span class="n">encoder_input</span><span class="p">,</span> 
+      <span class="n">outputs</span><span class="o">=</span><span class="n">bottleneck</span><span class="p">,</span> 
+      <span class="n">name</span><span class="o">=</span><span class="s2">&quot;encoder&quot;</span>
+    <span class="p">)</span>
+    
+  <span class="k">def</span> <span class="nf">_add_encoder_input</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Create an input object with the specified input shape</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        tf.keras.layer.Input: The input layer to the VAE</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">Input</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">input_shape</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;encoder_input&quot;</span><span class="p">)</span>
+  
+  <span class="k">def</span> <span class="nf">_add_encoder_dense_layers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">encoder_input</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Add the main body of the VAE using dense layers. Add batch norm layers </span>
+<span class="sd">    to speed up training</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        encoder_input (tf.keras.layers.Input): The encoder input</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        tf.keras.layers.Dense: The architecture of the encoder without the </span>
+<span class="sd">        bottleneck</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">encoder_input</span>
+    
+    <span class="c1"># First dense layer</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">Dense</span><span class="p">(</span>
+      <span class="mi">1024</span><span class="p">,</span>
+      <span class="n">activation</span><span class="o">=</span><span class="s1">&#39;relu&#39;</span><span class="p">,</span>
+      <span class="n">name</span><span class="o">=</span><span class="s1">&#39;encoder_dense_1&#39;</span>
+    <span class="p">)(</span><span class="n">x</span><span class="p">)</span>
+    
+    <span class="c1"># Second dense layer</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">Dense</span><span class="p">(</span>
+      <span class="mi">256</span><span class="p">,</span>
+      <span class="n">activation</span><span class="o">=</span><span class="s1">&#39;relu&#39;</span><span class="p">,</span>
+      <span class="n">name</span><span class="o">=</span><span class="s1">&#39;encoder_dense_2&#39;</span><span class="p">,</span>
+    <span class="p">)(</span><span class="n">x</span><span class="p">)</span>
+    
+    <span class="c1"># # Third dense layer</span>
+    <span class="c1"># x = Dense(</span>
+    <span class="c1">#   32,</span>
+    <span class="c1">#   activation=&#39;relu&#39;,</span>
+    <span class="c1">#   name=&#39;encoder_dense_3&#39;</span>
+    <span class="c1"># )(x)</span>
+    
+    <span class="k">return</span> <span class="n">x</span>
+  
+  <span class="k">def</span> <span class="nf">_add_bottleneck</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dense_layers</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Add a bottleneck with Gaussian sampling (dense layers) to the </span>
+<span class="sd">    architecture.</span>
+<span class="sd">    </span>
+<span class="sd">    NOTE: We no longer have a sequential model, the architecture branches out into the mean layer and the log variance layer</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        dense_layers (tf.keras.layers.Dense): The encoder without the bottleneck</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        tf.keras.layers.Lambda: The encoder layers including the bottleneck </span>
+<span class="sd">        sampling layer</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">dense_layers</span>
+    
+    <span class="c1"># Branching the model into mean and log variance layers</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">mu</span> <span class="o">=</span> <span class="n">Dense</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">latent_space_dim</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;mu&quot;</span><span class="p">)(</span><span class="n">x</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">log_variance</span> <span class="o">=</span> <span class="n">Dense</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">latent_space_dim</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;log_variance&quot;</span><span class="p">)(</span><span class="n">x</span><span class="p">)</span>
+    
+    <span class="c1"># Define the function for the lambda layer</span>
+    <span class="k">def</span> <span class="nf">sample_point_normal</span><span class="p">(</span><span class="n">args</span><span class="p">):</span>
+      <span class="n">mu</span><span class="p">,</span> <span class="n">log_variance</span> <span class="o">=</span> <span class="n">args</span>
+      
+      <span class="c1"># Sample a point from the standard normal distribution</span>
+      <span class="n">epsilon</span> <span class="o">=</span> <span class="n">K</span><span class="o">.</span><span class="n">random_normal</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="n">K</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mu</span><span class="p">),</span> <span class="n">mean</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">stddev</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+      
+      <span class="c1"># The equation for sampling a point is:</span>
+      <span class="c1"># z = \mu + Sigma * epislon</span>
+      <span class="c1"># where \Sigma = exp((log_variance) / 2)</span>
+      <span class="n">sampled_point</span> <span class="o">=</span> <span class="n">mu</span> <span class="o">+</span> <span class="n">K</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">log_variance</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="n">epsilon</span>
+      <span class="k">return</span> <span class="n">sampled_point</span>
+    
+    <span class="c1"># Connect mean and log variance again by sampling a point from distribution</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">Lambda</span><span class="p">(</span>
+      <span class="n">sample_point_normal</span><span class="p">,</span>
+      <span class="n">name</span><span class="o">=</span><span class="s2">&quot;encoder_output&quot;</span>
+    <span class="p">)([</span><span class="bp">self</span><span class="o">.</span><span class="n">mu</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">log_variance</span><span class="p">])</span>
+    
+    <span class="k">return</span> <span class="n">x</span></div>
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+  <span class="c1"># Generate training data from feature vectors</span>
+  <span class="n">train_data</span> <span class="o">=</span> <span class="n">load_csv_files</span><span class="p">(</span><span class="n">TRAIN_DIR</span><span class="p">)</span>
+  <span class="n">test_data</span> <span class="o">=</span> <span class="n">load_csv_files</span><span class="p">(</span><span class="n">TEST_DIR</span><span class="p">)</span>
+  
+  <span class="n">input_shape</span> <span class="o">=</span> <span class="p">[</span><span class="n">train_data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span>
+  
+  <span class="c1"># Build the vae</span>
+  <span class="n">vae</span> <span class="o">=</span> <span class="n">VAE</span><span class="p">(</span>
+    <span class="n">input_shape</span><span class="p">,</span>
+    <span class="n">latent_space_dim</span><span class="o">=</span><span class="n">LATENT_SPACE_DIM</span>
+  <span class="p">)</span>
+  <span class="n">vae</span><span class="o">.</span><span class="n">summary</span><span class="p">()</span>
+  <span class="n">vae</span><span class="o">.</span><span class="n">compile</span><span class="p">()</span>
+  <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;...Compiled!&quot;</span><span class="p">)</span>
+  
+  <span class="c1"># # Fit the model</span>
+  <span class="c1"># history = vae.train(</span>
+  <span class="c1">#   X_train=train_data,</span>
+  <span class="c1">#   batch_size=BATCH_SIZE,</span>
+  <span class="c1">#   num_epochs=NUM_EPOCHS</span>
+  <span class="c1"># )</span>
+  
+  <span class="c1"># vae.save(&#39;../model/vae-2023-07-06&#39;)</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Jackson Howe.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
