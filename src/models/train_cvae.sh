@@ -1,10 +1,10 @@
 #!/bin/bash
 #SBATCH --account=def-sushant
 #SBATCH --nodes=1
-#SBATCH --gpus-per-node=v100:4
+#SBATCH --gpus-per-node=p100:1
 #SBATCH --ntasks-per-node=32
-#SBATCH --mem=65536M
-#SBATCH --time=1-00:00:00
+#SBATCH --mem=102400M
+#SBATCH --time=0-20:00:00
 #SBATCH --job-name=train_cvae
 #SBATCH --output=../../SLURM_DEFAULT_OUT/train_cvae-%j.out
 #SBATCH --error=../../SLURM_DEFAULT_OUT/train_cvae-%j.err

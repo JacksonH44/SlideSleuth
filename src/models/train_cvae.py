@@ -4,20 +4,22 @@
   link: https://www.youtube.com/watch?v=6fZdJKm-fSk&list=PL-wATfeyAMNpEyENTc-tVH5tfLGKtSWPp&index=6
 
   Date Created: June 8, 2023
-  Last Updated: July 14, 2023
+  Last Updated: July 21, 2023
 """
 
 import math
 from os.path import join
+from datetime import datetime
+import pickle
 
 import tensorflow as tf
 
 from cvae import CVAE
 from train_vae import plot_loss
 
-LEARNING_RATE = 0.001
-BATCH_SIZE = 128
-EPOCHS = 10
+LEARNING_RATE = 1e-4
+BATCH_SIZE = 32
+EPOCHS = 20
 IMG_SIZE = 224
 
 LATENT_SPACE_DIM = 200
@@ -27,9 +29,20 @@ NUM_VALID_TILES = 18508
 STEPS_PER_EPOCH = math.ceil(NUM_TRAINING_TILES / BATCH_SIZE)
 VALIDATION_STEPS = math.ceil(NUM_VALID_TILES / BATCH_SIZE)
 
-DIR_PATH = '/scratch/jhowe4/outputs/uhn/CK7'
-SAVE_PATH = '../../model/cvae-2023-07-17'
-FIG_PATH = "../../reports/figures"
+AUTOTUNE = tf.data.AUTOTUNE
+
+DIR_PATH = "../../data/processed/CK7/CK7_cvae"
+SAVE_PATH = f"../../models/cvae-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+FIG_PATH = f"../../reports/figures/cvae-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+
+def change_inputs(images, _):
+  """A function that transforms a dataset from an image-label pair to an image-image pair for autoencoder training
+
+  Args:
+      iages, labels (tf.data.Dataset): A dataset consisting of image-label pairs
+  """
+  
+  return images, images
 
 def make_dataset(dir_path, batch_size=BATCH_SIZE, img_size=(IMG_SIZE, IMG_SIZE), shuffle=True):
   """makes the dataset for a directory of images. Assumes the directory has already been cleaned, or else the error: 'InvalidArgumentError: Input is empty.' may pop up
@@ -49,6 +62,26 @@ def make_dataset(dir_path, batch_size=BATCH_SIZE, img_size=(IMG_SIZE, IMG_SIZE),
     batch_size=batch_size,
     shuffle=shuffle
   )
+  
+def change_inputs(image, _):
+    return image, image
+
+def normalize(image, mirrored_image):
+    return (tf.cast(image, tf.float32) / 255.0, tf.cast(mirrored_image, tf.float32) / 255.0)
+  
+def data_pipeline(dir_path, batch_size=BATCH_SIZE, img_size=(IMG_SIZE, IMG_SIZE), shuffle=True):
+  
+  dataset = tf.keras.utils.image_dataset_from_directory(
+    dir_path,
+    batch_size=batch_size,
+    image_size=img_size,
+    shuffle=shuffle
+  )
+  dataset = dataset.map(change_inputs, num_parallel_calls=AUTOTUNE)
+  dataset = dataset.map(normalize, num_parallel_calls=AUTOTUNE)
+  dataset = dataset.cache().prefetch(AUTOTUNE)
+  
+  return dataset
 
 if __name__ == '__main__':
   # Load dataset
@@ -57,45 +90,39 @@ if __name__ == '__main__':
   train_ds= make_dataset(train_path)
   valid_ds= make_dataset(valid_path)
   
-  # Use Tensorflow's distributed computing API to train using multiple GPUs if 
-  # they are available to you.
-  strategy = tf.distribute.MirroredStrategy()
-  
-  # Check the number of GPUs.
-  print(f"Number of devices: {strategy.num_replicas_in_sync}")
-  
-  with strategy.scope():
-  
-    # You must specify the model parameters.
-    vae = CVAE(
+  # You must specify the model parameters.
+  vae = CVAE(
       input_shape=(224, 224, 3),
       conv_filters=(32, 64, 64, 64),
       conv_kernels=(3, 3, 3, 3),
       conv_strides=(1, 2, 2, 1),
       latent_space_dim=LATENT_SPACE_DIM
-    )
+  )
   
-    # Train model
-    vae.summary()
-    vae.compile(LEARNING_RATE)
+  # Train model
+  vae.summary()
+  vae.compile(LEARNING_RATE)
       
-    # Train the model
-    history = vae.train(
+  # Train the model
+  history = vae.train(
       train_ds,  
       num_epochs=EPOCHS, 
       steps_per_epoch=STEPS_PER_EPOCH,
       validation_data=valid_ds, 
       validation_steps=VALIDATION_STEPS,
-      cp_path=join(SAVE_PATH, 'checkpoint')
-    )
+      cp_path=SAVE_PATH
+  )
   
-    # Save the model
-    vae.save(SAVE_PATH)
+  # Save the model
+  vae.save(SAVE_PATH)
+  
+  with open(join(SAVE_PATH, "history.pkl"), "wb") as file:
+    pickle.dump(history.history, file)
   
   # Plot loss history
-  reconstruction_loss_path = join(FIG_PATH, "cvae_reconstruction_loss.png")
-  kl_loss_path = join(FIG_PATH, "cvae_kl_loss.png")
-  total_loss_path = join(FIG_PATH, "cvae_total_loss")
+  reconstruction_loss_path = join(FIG_PATH, f"reconstruction_loss.png")
+  kl_loss_path = join(FIG_PATH, f"ckl_loss.png")
+  total_loss_path = join(FIG_PATH, f"total_loss.png")
   plot_loss(
     history, 
     'calculate_reconstruction_loss',

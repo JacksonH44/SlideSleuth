@@ -9,6 +9,7 @@
 
 import os
 import pickle
+import datetime
 
 from tensorflow.keras import Model
 from tensorflow.keras.layers import Input, Conv2D, ReLU, BatchNormalization, Flatten, Dense, Reshape, Conv2DTranspose, Activation, Lambda
@@ -55,6 +56,7 @@ class CVAE:
     self.conv_strides = conv_strides # []
     self.latent_space_dim = latent_space_dim
     self.reconstruction_loss_weight = 1000
+    self.kl_loss_weight = 1e-7
 
     self.encoder = None
     self.decoder = None
@@ -78,7 +80,7 @@ class CVAE:
   def compile(self, learning_rate=0.0001):
     """Compile the model before use"""
     
-    optimizer = Adam(learning_rate=learning_rate)
+    optimizer = Adam(learning_rate=learning_rate, clipvalue=1.0)
     # standardization + regularisation for the loss function
     self.model.compile(
       optimizer=optimizer, 
@@ -100,18 +102,16 @@ class CVAE:
     
     # Create a checkpoint to save weights after each epoch.
     self._create_folder(cp_path)
-    cp_path = os.path.join(cp_path, 'weights-{epoch:02d}.h5')
+    checkpoint_path = os.path.join(cp_path, 'weights-{epoch:02d}.h5')
     
     model_cp = tf.keras.callbacks.ModelCheckpoint(
-      filepath=cp_path, 
+      filepath=checkpoint_path, 
       monitor='val_calculate_reconstruction_loss',
       verbose=1,
       save_freq='epoch',
-      save_weights_only=True
+      save_weights_only=True,
+      save_best_only=True
     )
-    
-    # Save model initial weights
-    self.model.save_weights(cp_path.format(epoch=0))
     
     # Train the model and return its history
     history = self.model.fit(
@@ -131,7 +131,7 @@ class CVAE:
     
     self._create_folder(save_folder)
     self._save_parameters(save_folder)
-    self._save_weights(save_folder)
+    # self._save_weights(save_folder)
 
   def load_weights(self, weights_path):
     """Load trained weights for a model"""
@@ -162,7 +162,7 @@ class CVAE:
   def _calculate_combined_loss(self, y_target, y_predicted):
     reconstruction_loss = calculate_reconstruction_loss(y_target, y_predicted)
     kl_loss = calculate_kl_loss(self)()
-    combined_loss = self.reconstruction_loss_weight * reconstruction_loss + kl_loss
+    combined_loss = self.reconstruction_loss_weight*reconstruction_loss + kl_loss*self.kl_loss_weight
     return combined_loss
     
   def _create_folder(self, folder):
