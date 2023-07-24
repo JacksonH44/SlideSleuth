@@ -3,7 +3,7 @@ data/external
 data/interim
 data/processed
 data/raw
-models/weights
+models/
 reports/figures
 container.sif
 src/__pycache
@@ -11,3 +11,4 @@ src/data/__pycache__
 src/features/__pycache__
 src/models/__pycache__
 src/visualization/__pycache__
+notebooks/.ipynb_checkpoints

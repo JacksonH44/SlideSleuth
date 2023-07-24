@@ -14,8 +14,8 @@ from PIL import ImageFile
 
 BATCH_SIZE = 64
 IMG_SIZE = 224
-ERR_FILE = '/scratch/jhowe4/outputs/uhn/CK7/error_log.txt'
-DIR_PATH = '/scratch/jhowe4/outputs/uhn/CK7'
+DIR_PATH = '../../data/processed/CK7/CK7_cvae'
+ERR_FILE = join(DIR_PATH, 'error_log.txt')
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
@@ -84,6 +84,7 @@ def clean_directory(clean_dir, log_file=ERR_FILE):
       clean_dir (str): expects the directory in which the images are
   """
   
+  print(f"cleaning {clean_dir}")
   for file in listdir(clean_dir):
     statfile = stat(join(clean_dir, file))
     filesize = statfile.st_size
@@ -111,15 +112,13 @@ def preprocess_directory(root_path):
   valid_path = join(root_path, 'valid')
   test_path = join(root_path, 'test')
   
-  # Organize and clean the directories for all of the train, test, and validation folders.
   organize_dir(train_path)
-  clean_directory(train_path)
-  
-  organize_dir(valid_path)
-  clean_directory(valid_path)
-  
   organize_dir(test_path)
-  clean_directory(test_path)
+  organize_dir(valid_path)
+  
+  clean_directory(join(train_path, 'folder'))
+  clean_directory(join(test_path, 'folder'))
+  clean_directory(join(valid_path, 'folder'))
 
 if __name__ == '__main__':
   dir_path = DIR_PATH

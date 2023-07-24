@@ -1,6 +1,7 @@
 #!/bin/bash
 #SBATCH --account=def-sushant
-#SBATCH --cpus-per-task=6
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=32
 #SBATCH --time=0-03:00:00
 #SBATCH --mem=32G
 #SBATCH --job-name=cvae_data_pipeline

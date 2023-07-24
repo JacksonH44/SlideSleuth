@@ -12,7 +12,7 @@ from shutil import move, rmtree
 
 import pandas as pd
 
-DIR_PATH = "../../data/interim/HNE"
+DIR_PATH = "../../data/interim/HNE_images"
 LABEL = join(DIR_PATH, "labels.csv")
 ERR_FILE = join(DIR_PATH, "error_log.txt")
 
@@ -132,13 +132,16 @@ def preprocess(root_dir):
   test_path = join(root_dir, "test")
   valid_path = join(root_dir, "valid")
   
-  organize_dir(train_path)
-  organize_dir(test_path)
-  organize_dir(valid_path)
+  # organize_dir(train_path)
+  # organize_dir(test_path)
+  # organize_dir(valid_path)
   
-  clean_directory(train_path)
-  clean_directory(test_path)
-  clean_directory(valid_path)
+  paths = [train_path, valid_path, test_path]
+  
+  for path in paths:
+    for category in listdir(path):
+      print(f"Cleaning {join(path, category)}")
+      clean_directory(join(path, category))
   
 if __name__ == '__main__':
   preprocess(DIR_PATH)
