@@ -1,5 +1,4 @@
 SLURM_DEFAULT_OUT
-data/external
 data/interim
 data/processed
 data/raw
