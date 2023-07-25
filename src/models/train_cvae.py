@@ -8,7 +8,8 @@
 """
 
 import math
-from os.path import join
+from os.path import join, exists
+from os import makedirs
 from datetime import datetime
 import pickle
 
@@ -17,7 +18,7 @@ import tensorflow as tf
 from cvae import CVAE
 from train_vae import plot_loss
 
-LEARNING_RATE = 1e-4
+LEARNING_RATE = 1e-5
 BATCH_SIZE = 32
 EPOCHS = 20
 IMG_SIZE = 224
@@ -123,6 +124,10 @@ if __name__ == '__main__':
   reconstruction_loss_path = join(FIG_PATH, f"reconstruction_loss.png")
   kl_loss_path = join(FIG_PATH, f"ckl_loss.png")
   total_loss_path = join(FIG_PATH, f"total_loss.png")
+  
+  if not exists(FIG_PATH):
+    makedirs(FIG_PATH)
+    
   plot_loss(
     history, 
     'calculate_reconstruction_loss',

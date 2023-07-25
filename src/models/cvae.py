@@ -9,7 +9,6 @@
 
 import os
 import pickle
-import datetime
 
 from tensorflow.keras import Model
 from tensorflow.keras.layers import Input, Conv2D, ReLU, BatchNormalization, Flatten, Dense, Reshape, Conv2DTranspose, Activation, Lambda
@@ -162,7 +161,7 @@ class CVAE:
   def _calculate_combined_loss(self, y_target, y_predicted):
     reconstruction_loss = calculate_reconstruction_loss(y_target, y_predicted)
     kl_loss = calculate_kl_loss(self)()
-    combined_loss = self.reconstruction_loss_weight*reconstruction_loss + kl_loss*self.kl_loss_weight
+    combined_loss = self.reconstruction_loss_weight*reconstruction_loss + kl_loss
     return combined_loss
     
   def _create_folder(self, folder):
