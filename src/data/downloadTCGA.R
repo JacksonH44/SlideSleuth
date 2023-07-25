@@ -13,13 +13,12 @@ query <- GDCquery(
   project = "TCGA-ESCA", 
   data.category = "Biospecimen",
   data.type = "Slide Image",
-  experimental.strategy = "Diagnostic Slide",
-  sample.type = c("Primary Tumor")
+  experimental.strategy = "Diagnostic Slide"
 )
 
 print(query)
 
-# print("Downloading...")
+print("Downloading...")
 
-# # Download whole slide images from TCGA for Pancreatic adenocarcinoma
-# GDCdownload(query, method="api")
+# Download whole slide images from TCGA for Pancreatic adenocarcinoma
+GDCdownload(query, method="api")
