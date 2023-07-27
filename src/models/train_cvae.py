@@ -20,7 +20,7 @@ from train_vae import plot_loss
 
 LEARNING_RATE = 1e-5
 BATCH_SIZE = 32
-EPOCHS = 20
+EPOCHS = 50
 IMG_SIZE = 224
 
 LATENT_SPACE_DIM = 200
@@ -32,9 +32,11 @@ VALIDATION_STEPS = math.ceil(NUM_VALID_TILES / BATCH_SIZE)
 
 AUTOTUNE = tf.data.AUTOTUNE
 
+unique_id = datetime.now().strftime('%Y%m%d-%H%M%S')
+
 DIR_PATH = "../../data/processed/CK7/CK7_cvae"
-SAVE_PATH = f"../../models/cvae-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
-FIG_PATH = f"../../reports/figures/cvae-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+SAVE_PATH = f"../../models/cvae-{unique_id}"
+FIG_PATH = f"../../reports/figures/cvae-{unique_id}"
 
 def change_inputs(images, _):
   """A function that transforms a dataset from an image-label pair to an image-image pair for autoencoder training
@@ -45,16 +47,27 @@ def change_inputs(images, _):
   
   return images, images
 
-def make_dataset(dir_path, batch_size=BATCH_SIZE, img_size=(IMG_SIZE, IMG_SIZE), shuffle=True):
+def make_dataset(dir_path, training, batch_size=BATCH_SIZE, img_size=(IMG_SIZE, IMG_SIZE), shuffle=True):
   """makes the dataset for a directory of images. Assumes the directory has already been cleaned, or else the error: 'InvalidArgumentError: Input is empty.' may pop up
 
   Returns:
       tf.data.Dataset: a tensorflow dataset object representing all images in the directory
   """
   
-  datagen = tf.keras.preprocessing.image.ImageDataGenerator(
-    rescale=1./255.0
-  )
+  if training:
+    # Augment the training data.
+    datagen = tf.keras.preprocessing.image.ImageDataGenerator(
+      rescale=1./255.0,
+      horizontal_flip=True,
+      rotation_range=20,
+      shear_range=0.2,
+      width_shift_range=0.1
+    )
+  else:
+    # Do not augment the testing or validation data.
+    datagen = tf.keras.preprocessing.image.ImageDataGenerator(
+      rescale=1./255.0
+    )
   
   return datagen.flow_from_directory(
     dir_path,
@@ -88,8 +101,8 @@ if __name__ == '__main__':
   # Load dataset
   train_path = join(DIR_PATH, 'train')
   valid_path = join(DIR_PATH, 'valid')
-  train_ds= make_dataset(train_path)
-  valid_ds= make_dataset(valid_path)
+  train_ds= make_dataset(train_path, training=True)
+  valid_ds= make_dataset(valid_path, training=False)
   
   # You must specify the model parameters.
   vae = CVAE(
