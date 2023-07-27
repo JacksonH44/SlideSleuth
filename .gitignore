@@ -1,3 +1,4 @@
+.vscode
 SLURM_DEFAULT_OUT
 data/interim
 data/processed

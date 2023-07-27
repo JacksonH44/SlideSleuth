@@ -2,7 +2,7 @@
 #SBATCH --account=def-sushant
 #SBATCH --cpus-per-task=6
 #SBATCH --mem=65536M
-#SBATCH --time=0-16:00:00
+#SBATCH --time=1-00:00:00
 #SBATCH --job-name=tile_uhn
 #SBATCH --output=../../SLURM_DEFAULT_OUT/tile_uhn-%j.out
 #SBATCH --error=../../SLURM_DEFAULT_OUT/tile_uhn-%j.err
@@ -18,10 +18,10 @@ module load openslide
 source $ENVDIR/bin/activate
 pip install --no-index openslide-python
 
-input_folder="../../data/raw/HNE"
-train_folder="../../data/interim/HNE/train"
-valid_folder="../../data/interim/HNE/valid"
-test_folder="../../data/interim/HNE/test"
+input_folder="../../data/raw/CK7"
+train_folder="../../data/interim/CK7/train"
+valid_folder="../../data/interim/CK7/valid"
+test_folder="../../data/interim/CK7/test"
 
 mkdir -p $train_folder
 mkdir -p $valid_folder
