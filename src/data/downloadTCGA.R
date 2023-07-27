@@ -16,8 +16,6 @@ query <- GDCquery(
   experimental.strategy = "Diagnostic Slide"
 )
 
-print(query)
-
 print("Downloading...")
 
 # Download whole slide images from TCGA for Pancreatic adenocarcinoma

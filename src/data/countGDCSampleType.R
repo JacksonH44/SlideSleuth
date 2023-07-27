@@ -14,31 +14,58 @@ getID <- function(str) {
   return(elements[[1]][1])
 }
 
+# Function to extract the case ID from the longer TCGA case ID
+getBarcode <- function(str) {
+  elements <- strsplit(str, "-", fixed=TRUE)[[1]]
+  return(paste(elements[1:3], collapse="-"))
+}
+
 # List all the manifest files in the current directory.
 manifest_files = list.files()
+projectName <- ""
 
 # Find all TCGA project names in the manifest and store the barcodes corresponding to each.
 for (i in 1:length(manifest_files)) {
-  df <- read.table(manifest_files[i], sep="\t")
-  files <- df$V2
-  barcodes <- map(files, getID)
-
-  # Find normal solid tissue 
-  normal <- TCGAquery_SampleTypes(
-    barcode=barcodes,
-    typesample=c("NT")
-  )
-
-  # Find normal solid tissue 
-  tumour <- TCGAquery_SampleTypes(
-    barcode=barcodes,
-    typesample=c("TP")
-  )
-
   # Get the name of the TCGA project
   projectName <- strsplit(manifest_files[i], "_")[[1]][3]
   projectName <- strsplit(projectName, ".", fixed=TRUE)[[1]][1]
+
+  # We want to select only lung adenocarcinoma as it has a good amount of normal tissue as well as primary tumour tissue
+  if (toupper(projectName) == "LUAD") {
+    df <- read.table(manifest_files[i], sep="\t")
+    files <- df$V2
+    barcodes <- map(files, getID)
+
+    # Find normal solid tissue 
+    normal <- TCGAquery_SampleTypes(
+      barcode=barcodes,
+      typesample=c("NT")
+    )
+
+    # Find normal solid tissue 
+    tumour <- TCGAquery_SampleTypes(
+      barcode=barcodes,
+      typesample=c("TP")
+    )
+
+    # Undersample from the primary tumour case to match the number of samples of normal tissue
+    tumour <- sample(tumour, size=length(normal))
   
-  # Print out stats
-  print(paste("Project:", toupper(projectName), "# Tumour:", length(tumour), "# Normal:", length(normal)))
+    # Print out stats
+    print(paste("Project:", toupper(projectName), "# Tumour:", length(tumour), "# Normal:", length(normal)))
+
+    setwd("/scratch/jhowe4/inputs/luad")
+    # Query the combined sample
+    combinedSample <- c(tumour, normal)
+    combinedSample <- map(combinedSample, getBarcode)
+    query <- GDCquery(
+      project="TCGA-LUAD",
+      barcode=combinedSample,
+      data.category="Biospecimen",
+      data.type="Slide Image",
+      experimental.strategy="Tissue Slide"
+    )
+    results <- getResults(query)
+    GDCdownload(query, method="api")
+  }
 }
