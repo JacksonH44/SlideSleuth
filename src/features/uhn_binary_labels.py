@@ -85,4 +85,6 @@ if __name__ == '__main__':
     lepidic_df, 
     acinar_df
   )
-  print(final_df)
+  
+  # Transform to csv file.
+  final_df.to_csv('../../data/interim/uhn_labels.csv', index=False)

@@ -12,4 +12,4 @@ src/data/folder_utils.sh
 src/features/__pycache__
 src/models/__pycache__
 src/visualization/__pycache__
-notebooks/.ipynb_checkpointssrc/data/folder_utils.sh
+notebooks/.ipynb_checkpoints
