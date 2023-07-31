@@ -18,7 +18,7 @@ import tensorflow as tf
 from cvae import CVAE
 from train_vae import plot_loss
 
-LEARNING_RATE = 1e-5
+LEARNING_RATE = 1e-6
 BATCH_SIZE = 32
 EPOCHS = 50
 IMG_SIZE = 224
@@ -135,7 +135,7 @@ if __name__ == '__main__':
   
   # Plot loss history
   reconstruction_loss_path = join(FIG_PATH, f"reconstruction_loss.png")
-  kl_loss_path = join(FIG_PATH, f"ckl_loss.png")
+  kl_loss_path = join(FIG_PATH, f"kl_loss.png")
   total_loss_path = join(FIG_PATH, f"total_loss.png")
   
   if not exists(FIG_PATH):

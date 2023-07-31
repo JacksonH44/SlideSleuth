@@ -3,7 +3,7 @@
 #SBATCH --nodes=1
 #SBATCH --gpus-per-node=p100:1
 #SBATCH --ntasks-per-node=32
-#SBATCH --mem=102400M
+#SBATCH --mem=122880M
 #SBATCH --time=3-00:00:00
 #SBATCH --job-name=train_cvae
 #SBATCH --output=../../SLURM_DEFAULT_OUT/train_cvae-%j.out
