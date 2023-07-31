@@ -54,18 +54,18 @@ for (i in 1:length(manifest_files)) {
     # Print out stats
     print(paste("Project:", toupper(projectName), "# Tumour:", length(tumour), "# Normal:", length(normal)))
 
-    setwd("/scratch/jhowe4/inputs/luad")
+    setwd("/scratch/jhowe4/inputs/GDC/luad_example")
     # Query the combined sample
     combinedSample <- c(tumour, normal)
     combinedSample <- map(combinedSample, getBarcode)
+    normalSample <- map(normal, getBarcode)
     query <- GDCquery(
       project="TCGA-LUAD",
-      barcode=combinedSample,
+      barcode=normalSample,
       data.category="Biospecimen",
       data.type="Slide Image",
       experimental.strategy="Tissue Slide"
     )
-    results <- getResults(query)
     GDCdownload(query, method="api")
   }
 }

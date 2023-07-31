@@ -10,10 +10,11 @@ BiocManager::install("TCGAbiolinks")
 library(TCGAbiolinks)
 
 query <- GDCquery(
-  project = "TCGA-ESCA", 
+  project = "TCGA-LUAD", 
   data.category = "Biospecimen",
   data.type = "Slide Image",
-  experimental.strategy = "Diagnostic Slide"
+  experimental.strategy = "Diagnostic Slide",
+  sample.type = c("NT")
 )
 
 print("Downloading...")
