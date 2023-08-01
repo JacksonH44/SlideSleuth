@@ -21,6 +21,7 @@ from cvae_data_pipeline import clean_directory
 LABELS = '../../data/interim/uhn_labels.csv'
 INPUT_DIR = '/scratch/jhowe4/outputs/uhn/CK7'
 OUTPUT_DIR = '/scratch/jhowe4/outputs/uhn/CK7_images'
+ERR_FILE = '/scratch/jhowe4/outputs/uhn/err_log.txt'
 
 def _create_dir(dir_path):
   if not exists(dir_path):
@@ -114,4 +115,9 @@ def organize_dataset(labels, input_dir, output_dir):
   
 
 if __name__ == '__main__':
-  organize_dataset(LABELS, INPUT_DIR, OUTPUT_DIR)
+  # organize_dataset(LABELS, INPUT_DIR, OUTPUT_DIR)
+  splits = ['train', 'valid', 'test']
+  classes = ['0', '1']
+  for split in splits:
+    for c in classes:
+      clean_directory(join(OUTPUT_DIR, split, c), ERR_FILE)
