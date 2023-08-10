@@ -23,7 +23,7 @@ BATCH_SIZE = 32
 EPOCHS = 50
 IMG_SIZE = 224
 
-LATENT_SPACE_DIM = 200
+LATENT_SPACE_DIM = 2000
 NUM_TRAINING_TILES = 121277
 NUM_VALID_TILES = 18508
 
@@ -72,6 +72,7 @@ def make_dataset(dir_path, training, batch_size=BATCH_SIZE, img_size=(IMG_SIZE, 
   return datagen.flow_from_directory(
     dir_path,
     target_size=img_size,
+    color_mode='grayscale',
     class_mode='input',
     batch_size=batch_size,
     shuffle=shuffle
@@ -106,7 +107,7 @@ if __name__ == '__main__':
   
   # You must specify the model parameters.
   vae = CVAE(
-      input_shape=(224, 224, 3),
+      input_shape=(224, 224, 1),
       conv_filters=(32, 64, 64, 64),
       conv_kernels=(3, 3, 3, 3),
       conv_strides=(1, 2, 2, 1),

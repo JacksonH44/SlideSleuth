@@ -5,36 +5,64 @@
   link: https://www.youtube.com/watch?v=-HqG2s4dxJ0&list=PL-wATfeyAMNpEyENTc-tVH5tfLGKtSWPp&index=8
 
   Date Created: June 9, 2023
-  Last Updated: June 12, 2023
+  Last Updated: August 1, 2023
 """
 
-import numpy as np
-import matplotlib.pyplot as plt
-from cvae import CVAE
+import sys
+sys.path.insert(0, '/home/jhowe4/projects/def-sushant/jhowe4/SlideSleuth/src/models')
 import pickle
 
-def select_images(images, labels, num_images=10):
-    sample_images_index = np.random.choice(range(len(images)), num_images)
-    sample_images = images[sample_images_index]
-    sample_labels = labels[sample_images_index]
-    return sample_images, sample_labels
+import matplotlib.pyplot as plt
+import tensorflow as tf
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
+from cvae import CVAE
+
+AUTOTUNE = tf.data.AUTOTUNE
+BATCH_SIZE = 32
+IMG_SIZE = 224
+DATASET_PATH = '../../data/processed/datasets/cvae_dataset.pkl'
+
+# def plot_reconstructed_images(images, reconstructed_images):
+#   fig = plt.figure(figsize=(12,3))
+#   num_images = len(images)
+#   for i, (image, reconstructed_image) in enumerate(zip(images, reconstructed_images)):
+#     image = image.squeeze()
+#     ax = fig.add_subplot(2, num_images, i + 1)
+#     ax.axis("off")
+#     ax.imshow(image)
+#     reconstructed_image = reconstructed_image.squeeze()
+#     ax = fig.add_subplot(2, num_images, i + num_images + 1)
+#     ax.axis("off")
+#     ax.imshow(reconstructed_image, cmap='plasma')
+#   fig.tight_layout()
+#   plt.subplots_adjust(wspace=0, hspace=0)
+#   plt.savefig('../../reports/figures/cvae-20230728-102327/reconstructed_images.svg', format='svg', transparent=True)
+  
 def plot_reconstructed_images(images, reconstructed_images):
-  fig = plt.figure(figsize=(15,3))
   num_images = len(images)
+  num_rows = num_images
+  num_cols = 2
+  
+  fig, axes = plt.subplots(num_rows, num_cols, figsize=(3,12))
+  
   for i, (image, reconstructed_image) in enumerate(zip(images, reconstructed_images)):
     image = image.squeeze()
-    ax = fig.add_subplot(2, num_images, i + 1)
+    ax = axes[i, 0]
     ax.axis("off")
-    ax.imshow(image, cmap="gray_r")
+    ax.imshow(image)
+    
     reconstructed_image = reconstructed_image.squeeze()
-    ax = fig.add_subplot(2, num_images, i + num_images + 1)
+    ax = axes[i, 1]
     ax.axis("off")
-    ax.imshow(reconstructed_image, cmap="gray_r")
-  plt.savefig('../img/reconstructed_images.pdf', format='png', transparent=True)
+    ax.imshow(reconstructed_image, cmap='plasma')
+
+  fig.tight_layout()
+  plt.subplots_adjust(wspace=0)
+  plt.savefig('../../reports/figures/cvae-20230728-102327/reconstructed_images.svg', format='svg', transparent=True)
 
 def plot_images_encoded_in_latent_space(latent_representations, sample_labels):
-  plt.figure(figsize=(10, 10))
+  plt.figure(figsize=(20, 20))
   plt.scatter(
     latent_representations[:, 0],
     latent_representations[:, 1],
@@ -45,31 +73,49 @@ def plot_images_encoded_in_latent_space(latent_representations, sample_labels):
   )
   plt.colorbar()
   plt.savefig('../img/latent_space.pdf', format='png', transparent=True)
+  
+def _change_inputs(image, _):
+    return image, image
+
+def _normalize(image, mirrored_image):
+    return (tf.cast(image, tf.float32) / 255.0, tf.cast(mirrored_image, tf.float32) / 255.0)
+  
+def data_pipeline(dir_path, batch_size=BATCH_SIZE, img_size=(IMG_SIZE, IMG_SIZE), shuffle=True):
+  
+  dataset = tf.keras.utils.image_dataset_from_directory(
+    dir_path,
+    batch_size=batch_size,
+    image_size=img_size,
+    shuffle=shuffle
+  )
+  dataset = dataset.map(_change_inputs, num_parallel_calls=AUTOTUNE)
+  dataset = dataset.map(_normalize, num_parallel_calls=AUTOTUNE)
+  dataset = dataset.cache().prefetch(AUTOTUNE)
+  return dataset
+
+def make_dataset(dir_path, img_size=(IMG_SIZE, IMG_SIZE), batch_size=BATCH_SIZE):
+  # Create data generator
+  datagen = ImageDataGenerator(
+    rescale=1./255
+  )
+  
+  return datagen.flow_from_directory(
+    dir_path,
+    target_size=img_size,
+    class_mode='input',
+    batch_size=batch_size
+  )
 
 if __name__ == "__main__":
   # Load saved autoencoder
-  model_path = '../model'
+  model_path = '../../models/cvae-20230728-102327/best'
   vae = CVAE.load(model_path)
-
-  # Load mnist data
-  data_path = '../outputs/ae_data.pkl'
-  data = None
-  with open(data_path, 'rb') as file:
-    data = pickle.load(file)
-  x_train, y_train, x_test, y_test = data
-
-  # Sample images
-  num_sample_show = 8
-  sample_images, _ = select_images(x_test, y_test, num_sample_show)
+  
+  # Load sample images dataset with pickle
+  sample_images = None
+  with open(DATASET_PATH, 'rb') as file:
+    sample_images = pickle.load(file)
 
   # Reconstruct the image with the autoencoder and plot them
   reconstructed_images, _ = vae.reconstruct(sample_images)
   plot_reconstructed_images(sample_images, reconstructed_images)
-  
-  # Sample images
-  num_images = 6000
-  sample_images, sample_labels = select_images(x_test, y_test, num_images)
-
-  # Visualize how the images are encoded in the latent space
-  _, latent_representations = vae.reconstruct(sample_images)
-  plot_images_encoded_in_latent_space(latent_representations, sample_labels)
