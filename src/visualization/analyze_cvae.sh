@@ -3,8 +3,8 @@
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:p100
 #SBATCH --ntasks-per-node=32
-#SBATCH --mem=32768M
-#SBATCH --time=0-02:00:00
+#SBATCH --mem=102400M
+#SBATCH --time=0-10:00:00
 #SBATCH --job-name=analyze_cvae
 #SBATCH --output=../../SLURM_DEFAULT_OUT/analyze_cvae-%j.out
 #SBATCH --error=../../SLURM_DEFAULT_OUT/analyze_cvae-%j.err

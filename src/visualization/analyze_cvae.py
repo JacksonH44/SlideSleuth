@@ -101,5 +101,9 @@ if __name__ == "__main__":
     sample_images = pickle.load(file)
 
   # Reconstruct the image with the autoencoder and plot them
-  reconstructed_images, _ = vae.reconstruct(sample_images)
-  plot_reconstructed_images(sample_images, reconstructed_images)
+  # reconstructed_images, _ = vae.reconstruct(sample_images)
+  # plot_reconstructed_images(sample_images, reconstructed_images)
+  
+  # Make generator dataset from specified directory.
+  test_ds = make_dataset('../../data/processed/CK7/CK7_cvae/test')
+  vae.generate_latent_representations(test_ds, '../../data/processed/CK7/CK7_cvae/test/latent_representations.tsv', '../../data/interim/uhn_labels.csv')

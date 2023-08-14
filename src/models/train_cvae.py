@@ -19,7 +19,7 @@ from cvae import CVAE
 from train_vae import plot_loss
 
 LEARNING_RATE = 1e-6
-BATCH_SIZE = 32
+BATCH_SIZE = 16
 EPOCHS = 50
 IMG_SIZE = 224
 

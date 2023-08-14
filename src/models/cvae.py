@@ -9,11 +9,14 @@
 
 import os
 import pickle
+import sys
+sys.path.insert(0, '/home/jhowe4/projects/def-sushant/jhowe4/SlideSleuth/src/features')
 
 from tensorflow.keras import Model
 from tensorflow.keras.layers import Input, Conv2D, ReLU, BatchNormalization, Flatten, Dense, Reshape, Conv2DTranspose, Activation, Lambda
 from tensorflow.keras import backend as K
 from keras.optimizers import Adam
+import pandas as pd
 import numpy as np
 import tensorflow as tf
 
@@ -145,6 +148,49 @@ class CVAE:
     latent_representations = self.encoder.predict(images)
     reconstructed_images = self.decoder.predict(latent_representations)
     return reconstructed_images, latent_representations
+  
+  def _binarize_class(self, class_name):
+    """A helper function that changes 'acinar' to 'invasive' and 'lepidic' to 'non-invasive'.
+
+    Args:
+        class_name (str): The string description of a class, either 'acinar' or 'lepidic'.
+    """
+    
+    if class_name == 'acinar':
+      return 'invasive'
+    else:
+      return 'non-invasive'
+  
+  def generate_latent_representations(self, dataset, outfile, classification_file):
+    """Generate the latent representation for each observation in a generator-based dataset, and write the latent representation to a file.
+
+    Args:
+        dataset (DirectoryIterator): tuples (x, y) where x is a numpy array containing a batch of images with shape (batch_size, *target_size, channels) and y is a numpy array of corresponding labels.
+        outfile (str): The location of the output file designated to write the latent representations to.
+        classification_file (str): The location of the labels file that classifies each image case as either invasive or non-invasive.
+    """
+    
+    batch_count = 0
+    batch_size = None
+    for data_batch, _ in dataset:
+      batch_size = len(data_batch)
+      break
+    
+    for data_batch, _ in dataset:
+      for i in range(batch_size):
+        # Generate latent representation embedding of the image.
+        latent_representation = self.encoder.predict(np.expand_dims(data_batch[i], axis=0))
+        # Get the filename associated with the current image prediction.
+        file_name = dataset.filenames[batch_count*batch_size + i].split('/')[1]
+        df = pd.DataFrame(latent_representation)
+        df['filename'] = file_name
+        # Get whether the tile is from an invasive or non-invasive case and add it to the data frame.
+        labels_df = pd.read_csv(classification_file)
+        label = self._binarize_class(labels_df[labels_df['0'] == int(file_name.split('-')[0].rstrip('ABCDE'))]['1'].values[0])
+        df['label'] = label
+        # Append the dataframe to a specified .tsv file.
+        df.to_csv(outfile, mode='a', index=False, header=False, sep='\t')
+      batch_count = batch_count + 1
 
   @classmethod
   def load(cls, save_folder="."):
