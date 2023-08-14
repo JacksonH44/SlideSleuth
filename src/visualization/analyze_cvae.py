@@ -22,22 +22,6 @@ AUTOTUNE = tf.data.AUTOTUNE
 BATCH_SIZE = 32
 IMG_SIZE = 224
 DATASET_PATH = '../../data/processed/datasets/cvae_dataset.pkl'
-
-# def plot_reconstructed_images(images, reconstructed_images):
-#   fig = plt.figure(figsize=(12,3))
-#   num_images = len(images)
-#   for i, (image, reconstructed_image) in enumerate(zip(images, reconstructed_images)):
-#     image = image.squeeze()
-#     ax = fig.add_subplot(2, num_images, i + 1)
-#     ax.axis("off")
-#     ax.imshow(image)
-#     reconstructed_image = reconstructed_image.squeeze()
-#     ax = fig.add_subplot(2, num_images, i + num_images + 1)
-#     ax.axis("off")
-#     ax.imshow(reconstructed_image, cmap='plasma')
-#   fig.tight_layout()
-#   plt.subplots_adjust(wspace=0, hspace=0)
-#   plt.savefig('../../reports/figures/cvae-20230728-102327/reconstructed_images.svg', format='svg', transparent=True)
   
 def plot_reconstructed_images(images, reconstructed_images):
   num_images = len(images)
