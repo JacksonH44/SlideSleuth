@@ -15,6 +15,18 @@ Currently, the tool is still in active development. As of right now, only the da
 
 ## Installation Instructons <a name="install"></a>
 
+### Requirements
+* [NumPy 1.13+](https://numpy.org/)
+* [NVIDIA GPU](https://www.nvidia.com/en-us/)
+* [Openslide Python](https://openslide.org/api/python/)
+* [Openslide](https://openslide.org/)
+* [pandas](https://pandas.pydata.org/)
+* [PIL](https://pillow.readthedocs.io/en/stable/)
+* [Python 3.7+](https://www.python.org/downloads/)
+* [scikit-learn](https://scikit-learn.org/stable/)
+* [SciPy](https://scipy.org/)
+* [Ubuntu](https://ubuntu.com/)
+
 ## Use Instructions <a name="use"></a>
 
 ## Credits <a name="credits"></a>
