@@ -22,6 +22,8 @@ AUTOTUNE = tf.data.AUTOTUNE
 BATCH_SIZE = 32
 IMG_SIZE = 224
 DATASET_PATH = '../../data/processed/datasets/cvae_dataset.pkl'
+SAVE_PATH = '../../reports/figures/cvae-20230728-102327/reconstructed_images.svg'
+MODEL_PATH = '../../models/cvae-20230728-102327/best'
   
 def plot_reconstructed_images(images, reconstructed_images):
   num_images = len(images)
@@ -43,7 +45,7 @@ def plot_reconstructed_images(images, reconstructed_images):
 
   fig.tight_layout()
   plt.subplots_adjust(wspace=0)
-  plt.savefig('../../reports/figures/cvae-20230728-102327/reconstructed_images.svg', format='svg', transparent=True)
+  plt.savefig(SAVE_PATH, format='svg', transparent=True)
 
 def plot_images_encoded_in_latent_space(latent_representations, sample_labels):
   plt.figure(figsize=(20, 20))
@@ -92,7 +94,7 @@ def make_dataset(dir_path, img_size=(IMG_SIZE, IMG_SIZE), batch_size=BATCH_SIZE)
 
 if __name__ == "__main__":
   # Load saved autoencoder
-  model_path = '../../models/cvae-20230728-102327/best'
+  model_path = MODEL_PATH
   vae = CVAE.load(model_path)
   
   # Load sample images dataset with pickle
@@ -101,9 +103,10 @@ if __name__ == "__main__":
     sample_images = pickle.load(file)
 
   # Reconstruct the image with the autoencoder and plot them
-  # reconstructed_images, _ = vae.reconstruct(sample_images)
-  # plot_reconstructed_images(sample_images, reconstructed_images)
+  reconstructed_images, _ = vae.reconstruct(sample_images)
+  plot_reconstructed_images(sample_images, reconstructed_images)
   
+  # NOTE: Experimental code below
   # Make generator dataset from specified directory.
-  test_ds = make_dataset('../../data/processed/CK7/CK7_cvae/test')
-  vae.generate_latent_representations(test_ds, '../../data/processed/CK7/CK7_cvae/test/latent_representations.tsv', '../../data/interim/uhn_labels.csv')
+  # test_ds = make_dataset('../../data/processed/CK7/CK7_cvae/test')
+  # vae.generate_latent_representations(test_ds, '../../data/processed/CK7/CK7_cvae/test/latent_representations.tsv', '../../data/interim/uhn_labels.csv')

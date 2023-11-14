@@ -1,6 +1,6 @@
 """A program that trains a deep convolutional autoencoder
 
-  Author: YouTube Channel: Valerio Velardo, with edits by Jackson Howe
+  Look at this youtube video for a model skeleton:
   link: https://www.youtube.com/watch?v=6fZdJKm-fSk&list=PL-wATfeyAMNpEyENTc-tVH5tfLGKtSWPp&index=6
 
   Date Created: June 8, 2023
