@@ -3,7 +3,7 @@ SLURM_DEFAULT_OUT
 data/interim
 data/processed
 data/raw
-models/
+models_output/
 reports/figures
 container.sif
 src/__pycache

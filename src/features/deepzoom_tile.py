@@ -164,6 +164,7 @@ class DeepZoomImageTiler(object):
                     ImgID, xmldir))
                 return
 
+        print(self._dz.level_count)
         for level in range(self._dz.level_count-1, -1, -1):
             ThisMag = Available[0]/pow(2, self._dz.level_count-(level+1))
 

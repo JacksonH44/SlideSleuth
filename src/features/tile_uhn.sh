@@ -19,9 +19,9 @@ source $ENVDIR/bin/activate
 pip install --no-index openslide-python
 
 input_folder="../../data/raw/CK7"
-train_folder="../../data/interim/CK7/train"
-valid_folder="../../data/interim/CK7/valid"
-test_folder="../../data/interim/CK7/test"
+train_folder="../../../../darah_jackson_data_transfer/processed_data/CK7/CK7_cvae/train"
+valid_folder=="../../../../darah_jackson_data_transfer/processed_data/CK7/CK7_cvae/valid"
+test_folder="../../../../darah_jackson_data_transfer/processed_data/CK7/CK7_cvae/test"
 
 mkdir -p $train_folder
 mkdir -p $valid_folder
